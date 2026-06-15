@@ -1,0 +1,11 @@
+{
+  "appId": "com.colezzare.app",
+  "appName": "Colezzare",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "launchAutoHide": true
+    }
+  }
+}

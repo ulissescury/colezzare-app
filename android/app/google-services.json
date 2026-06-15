@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "689604823761",
+    "project_id": "colezzare",
+    "storage_bucket": "colezzare.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:689604823761:android:28589987783492d15e53f0",
+        "android_client_info": {
+          "package_name": "com.colezzare.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhCGNa4xAuX1CIHtjowrWsfyWQByHIZUA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
