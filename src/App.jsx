@@ -2632,35 +2632,29 @@ function BrandOption({ b, value, onChange }) {
 
 // ─── REPORT MODAL — Figura Faltando ──────────────────────────────────────────
 function ReportModal({ onClose }) {
-  const [step,      setStep]      = useState(1); // 1=tipo, 2=detalhes, 3=obrigado
-  const [tipo,      setTipo]      = useState(""); // "faltando" | "prelancamento" | "lancamento"
-  const [nome,      setNome]      = useState("");
-  const [marca,     setMarca]     = useState("Bandai");
-  const [linha,     setLinha]     = useState("Cloth Myth EX");
-  const [saga,      setSaga]      = useState("");
+  const [categoria, setCategoria] = useState(""); // "problema" | "ideia" | "sugestao" | "catalogo"
   const [detalhe,   setDetalhe]   = useState("");
-  const [isBandai,  setIsBandai]  = useState(true);
-  const [foto,      setFoto]      = useState(null);
   const [submitting,setSubmitting]= useState(false);
+  const [enviado,   setEnviado]   = useState(false);
 
-  const TIPOS = [
-    { v:"faltando",      ic:"🔍", l:"Figura faltando",     d:"Existe uma figura que não está no catálogo" },
-    { v:"prelancamento", ic:"📢", l:"Pré-lançamento",      d:"Vi o anúncio de uma nova figura ainda não cadastrada" },
-    { v:"lancamento",    ic:"🚀", l:"Lançamento recente",   d:"Uma figura foi lançada e não está nos lançamentos" },
-    { v:"erro",          ic:"✏️", l:"Erro de informação",  d:"Dados incorretos em uma figura já cadastrada" },
+  const CATEGORIAS = [
+    { v:"problema",  ic:"🐛", l:"Problema/Bug",    d:"Algo não está funcionando corretamente",  cor:"#f87171" },
+    { v:"ideia",     ic:"💡", l:"Ideia",            d:"Tenho uma ideia para melhorar o app",     cor:"#ffd700" },
+    { v:"sugestao",  ic:"✨", l:"Sugestão",         d:"Quero sugerir uma melhoria ou recurso",   cor:"#a855f7" },
+    { v:"catalogo",  ic:"📦", l:"Catálogo",         d:"Figura faltando, erro de dados, novo lançamento", cor:"#22c55e" },
   ];
 
-  const handleFoto = (e) => {
-    const file = e.target.files[0];
-    if (file) setFoto({ file, preview: URL.createObjectURL(file) });
-  };
-
   const handleSubmit = async () => {
+    if (!categoria || !detalhe.trim()) return;
     setSubmitting(true);
-    // Demo: simula envio
-    await new Promise(r => setTimeout(r, 1200));
+    await api.post("/figures/suggestions", {
+      name: `[${categoria.toUpperCase()}] ${detalhe.substring(0,60)}`,
+      notes: detalhe,
+      line: categoria,
+      status: "pending",
+    }).catch(()=>{});
     setSubmitting(false);
-    setStep(3);
+    setEnviado(true);
   };
 
   return (
@@ -2669,22 +2663,22 @@ function ReportModal({ onClose }) {
       display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
       <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:500,
         background:"linear-gradient(180deg,#0f0a1e,#080812)",
-        borderRadius:"20px 20px 0 0",border:"1px solid #f8717133",
-        padding:"20px 18px 36px",maxHeight:"90vh",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+        borderRadius:"20px 20px 0 0",border:"1px solid #ffffff15",
+        padding:"20px 18px 36px",maxHeight:"90vh",overflowY:"scroll",
+        WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
 
-        <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
           <div style={{width:36,height:4,background:"#ffffff20",borderRadius:4}}/>
         </div>
 
-        {/* STEP 3 — Obrigado */}
-        {step===3 && (
+        {enviado ? (
           <div style={{textAlign:"center",padding:"20px 0"}}>
             <div style={{fontSize:52,marginBottom:16}}>🙏</div>
             <h2 style={{fontFamily:"'Cinzel',serif",fontSize:16,color:"#22c55e",marginBottom:8}}>
               Obrigado!
             </h2>
             <p style={{fontSize:12,color:"#888",lineHeight:1.7,marginBottom:20}}>
-              Sua informação foi enviada para nossa equipe. Vamos analisar e adicionar ao catálogo em breve!
+              Seu feedback foi enviado! Nossa equipe vai analisar em breve.
             </p>
             <button onClick={onClose} style={{padding:"12px 32px",borderRadius:20,border:"none",
               cursor:"pointer",background:"linear-gradient(90deg,#22c55e,#16a34a)",
@@ -2692,148 +2686,60 @@ function ReportModal({ onClose }) {
               Fechar
             </button>
           </div>
-        )}
+        ) : (
+          <>
+            <h2 style={{fontFamily:"'Cinzel',serif",fontSize:15,color:"#ffd700",marginBottom:4}}>
+              💬 Feedback
+            </h2>
+            <p style={{fontSize:12,color:"#555",marginBottom:16}}>
+              Problemas, ideias ou sugestões — queremos ouvir você!
+            </p>
 
-        {/* STEP 1 — Tipo */}
-        {step===1 && <>
-          <h2 style={{fontFamily:"'Cinzel',serif",fontSize:15,color:"#f87171",marginBottom:4}}>
-            ❓ Está faltando algo?
-          </h2>
-          <p style={{fontSize:11,color:"#555",marginBottom:16}}>
-            Ajude a manter o catálogo completo! Nos conte o que está faltando.
-          </p>
-          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-            {TIPOS.map(t=>(
-              <button key={t.v} onClick={()=>setTipo(t.v)} style={{
-                padding:"12px 14px",borderRadius:12,cursor:"pointer",textAlign:"left",
-                border:`2px solid ${tipo===t.v?"#f87171":"#ffffff10"}`,
-                background:tipo===t.v?"#f8717112":"#ffffff06"}}>
-                <div style={{fontSize:13,fontWeight:800,color:tipo===t.v?"#f87171":"#aaa",marginBottom:2}}>
-                  {t.ic} {t.l}
-                </div>
-                <div style={{fontSize:10,color:"#555"}}>{t.d}</div>
-              </button>
-            ))}
-          </div>
-          <button onClick={()=>tipo&&setStep(2)} style={{width:"100%",padding:"12px",borderRadius:10,
-            border:"none",cursor:tipo?"pointer":"not-allowed",
-            background:tipo?"linear-gradient(90deg,#f87171,#ef4444)":"#ffffff0d",
-            color:tipo?"#fff":"#444",fontSize:13,fontWeight:800,opacity:tipo?1:0.5}}>
-            Continuar →
-          </button>
-        </>}
-
-        {/* STEP 2 — Detalhes */}
-        {step===2 && <>
-          <button onClick={()=>setStep(1)} style={{background:"none",border:"none",
-            color:"#666",cursor:"pointer",fontSize:12,marginBottom:12}}>← Voltar</button>
-
-          <h2 style={{fontFamily:"'Cinzel',serif",fontSize:15,color:"#f87171",marginBottom:4}}>
-            {TIPOS.find(t=>t.v===tipo)?.ic} {TIPOS.find(t=>t.v===tipo)?.l}
-          </h2>
-          <p style={{fontSize:11,color:"#555",marginBottom:16}}>Quanto mais detalhes, melhor!</p>
-
-          {/* Nome */}
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:5}}>
-              NOME DA FIGURA *
-            </div>
-            <input value={nome} onChange={e=>setNome(e.target.value)}
-              placeholder="Ex: Saga de Gêmeos EX Revival"
-              style={{width:"100%",padding:"9px 12px",borderRadius:8,background:"#ffffff0a",
-                border:"1px solid #f8717122",color:"#dde",fontSize:12,outline:"none",
-                fontFamily:"'Rajdhani',sans-serif"}}/>
-          </div>
-
-          {/* Linha */}
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:6}}>LINHA</div>
-            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-              {["Cloth Myth EX","Cloth Myth","Vintage","Outra"].map(l=>(
-                <button key={l} onClick={()=>setLinha(l)} style={{padding:"5px 11px",borderRadius:20,
-                  border:"none",cursor:"pointer",fontSize:10,fontWeight:700,
-                  background:linha===l?"#f87171":"#ffffff0d",color:linha===l?"#fff":"#666"}}>
-                  {l}
+            {/* Categorias */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+              {CATEGORIAS.map(c=>(
+                <button key={c.v} onClick={()=>setCategoria(c.v)}
+                  style={{padding:"12px 10px",borderRadius:12,border:"none",cursor:"pointer",
+                    textAlign:"left",
+                    background:categoria===c.v?`${c.cor}22`:"#ffffff08",
+                    outline:categoria===c.v?`2px solid ${c.cor}66`:"none"}}>
+                  <div style={{fontSize:22,marginBottom:4}}>{c.ic}</div>
+                  <div style={{fontSize:12,fontWeight:800,color:categoria===c.v?c.cor:"#dde"}}>{c.l}</div>
+                  <div style={{fontSize:10,color:"#555",marginTop:2,lineHeight:1.3}}>{c.d}</div>
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Marca / Bandai */}
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:6}}>MARCA</div>
-            <button onClick={()=>setIsBandai(p=>!p)} style={{
-              width:"100%",padding:"10px 12px",borderRadius:10,cursor:"pointer",
-              border:`2px solid ${isBandai?"#cc0000":"#ffffff15"}`,
-              background:isBandai?"#cc000015":"#ffffff06",
-              display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:34,height:34,borderRadius:7,
-                background:isBandai?"#cc0000":"#ffffff10",
-                display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                <span style={{fontSize:8,fontWeight:900,color:isBandai?"#fff":"#444",
-                  fontFamily:"Arial,sans-serif",letterSpacing:0.5}}>
-                  {isBandai?"BANDAI":"?"}
-                </span>
-              </div>
-              <div style={{textAlign:"left"}}>
-                <div style={{fontSize:12,fontWeight:800,color:isBandai?"#ff4444":"#666"}}>
-                  {isBandai?"Original Bandai":"Não Bandai / Não sei"}
-                </div>
-                <div style={{fontSize:9,color:"#555"}}>Toque para alternar</div>
-              </div>
-            </button>
-          </div>
+            {/* Texto */}
+            {categoria && (
+              <>
+                <textarea
+                  value={detalhe}
+                  onChange={e=>setDetalhe(e.target.value)}
+                  placeholder={
+                    categoria==="problema" ? "Descreva o problema com detalhes..." :
+                    categoria==="ideia"    ? "Conta sua ideia..." :
+                    categoria==="sugestao" ? "Qual melhoria você sugere?" :
+                    "Nome da figura, erro ou lançamento..."
+                  }
+                  rows={4}
+                  style={{width:"100%",padding:"12px",borderRadius:10,
+                    background:"#ffffff08",border:"1px solid #ffffff15",
+                    color:"#dde",fontSize:12,resize:"none",outline:"none",
+                    marginBottom:14,fontFamily:"'Rajdhani',sans-serif"}}/>
 
-          {/* Saga */}
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:5}}>
-              SAGA / DETALHES
-            </div>
-            <textarea value={detalhe} onChange={e=>setDetalhe(e.target.value)} rows={3}
-              placeholder="Ex: Cavaleiro de Ouro da saga de Hades, versão OCE. Vi no site tamashiiweb.com..."
-              style={{width:"100%",padding:"9px 12px",borderRadius:8,background:"#ffffff0a",
-                border:"1px solid #f8717122",color:"#dde",fontSize:12,outline:"none",
-                fontFamily:"'Rajdhani',sans-serif",resize:"vertical",lineHeight:1.5}}/>
-          </div>
-
-          {/* Foto (opcional) */}
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:6}}>
-              FOTO <span style={{color:"#333",fontWeight:400}}>(opcional — print, foto, etc)</span>
-            </div>
-            {foto ? (
-              <div style={{position:"relative",width:80,height:80}}>
-                <img src={foto.preview} alt="" style={{width:80,height:80,borderRadius:8,objectFit:"cover",
-                  border:"1px solid #f8717144"}}/>
-                <button onClick={()=>setFoto(null)} style={{position:"absolute",top:-6,right:-6,
-                  background:"#cc0000",border:"none",borderRadius:"50%",width:18,height:18,
-                  color:"#fff",fontSize:10,cursor:"pointer",display:"flex",
-                  alignItems:"center",justifyContent:"center"}}>✕</button>
-              </div>
-            ) : (
-              <label style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 14px",
-                borderRadius:8,border:"1px dashed #f8717133",cursor:"pointer",
-                background:"#f8717108",color:"#888",fontSize:11}}>
-                📎 Adicionar imagem
-                <input type="file" accept="image/*" onChange={handleFoto} style={{display:"none"}}/>
-              </label>
+                <button onClick={handleSubmit} disabled={submitting||!detalhe.trim()}
+                  style={{width:"100%",padding:"13px",borderRadius:12,border:"none",
+                    cursor:"pointer",fontSize:13,fontWeight:800,
+                    background:detalhe.trim()?"linear-gradient(90deg,#ffd700,#ff8c00)":"#ffffff10",
+                    color:detalhe.trim()?"#000":"#555",
+                    opacity:submitting?0.7:1}}>
+                  {submitting?"Enviando...":"📤 Enviar feedback"}
+                </button>
+              </>
             )}
-          </div>
-
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={onClose} style={{flex:1,padding:"12px",borderRadius:10,
-              border:"1px solid #ffffff15",background:"transparent",
-              color:"#666",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-              Cancelar
-            </button>
-            <button onClick={handleSubmit} disabled={!nome||submitting} style={{flex:2,padding:"12px",
-              borderRadius:10,border:"none",cursor:nome?"pointer":"not-allowed",
-              background:nome?"linear-gradient(90deg,#f87171,#ef4444)":"#ffffff0d",
-              color:nome?"#fff":"#444",fontSize:13,fontWeight:800,opacity:nome?1:0.5}}>
-              {submitting?"⏳ Enviando...":"📤 Enviar para equipe CDZ"}
-            </button>
-          </div>
-        </>}
+          </>
+        )}
       </div>
     </div>
   );
@@ -2994,6 +2900,45 @@ function UserSettingsScreen({ user, onClose, onSave, onAdmin, pendingCount=0 }) 
 }
 
 // ─── ONLINE COUNTER ──────────────────────────────────────────────────────────
+// ─── VERIFICATION TICKER ─────────────────────────────────────────────────────
+function VerificationTicker({ onOpen }) {
+  const [xp,      setXp]      = useState(200);
+  const [credits, setCredits] = useState(20);
+
+  useEffect(()=>{
+    api.get("/gamification/config").then(data=>{
+      if (!Array.isArray(data)) return;
+      const v = data.find(c=>c.action==="verify_account");
+      if (v) { setXp(v.xp||0); setCredits(v.credits||0); }
+    }).catch(()=>{});
+  },[]);
+
+  const msg = [
+    xp>0 && credits>0 ? `✅ Verifique sua conta e ganhe +${xp} XP e +${credits} créditos` :
+    xp>0 ? `✅ Verifique sua conta e ganhe +${xp} XP` :
+    credits>0 ? `✅ Verifique sua conta e ganhe +${credits} créditos` :
+    `✅ Verifique sua conta`,
+    `Mais credibilidade no marketplace`,
+    `Selo de verificado`,
+    `Clique para verificar agora →`,
+  ].filter(Boolean).join(" \u00A0·\u00A0 ");
+
+  return (
+    <button onClick={onOpen}
+      style={{flexShrink:0,width:"100%",background:"#0d0d1e",
+        border:"none",borderBottom:"1px solid #ffd70022",cursor:"pointer",
+        padding:"5px 0",overflow:"hidden",position:"relative",height:26}}>
+      <div style={{
+        display:"inline-block",
+        whiteSpace:"nowrap",fontSize:10,color:"#ffd700",fontWeight:700,
+        animation:"tickerMove 20s linear infinite",position:"absolute",top:"50%",transform:"translateY(-50%)"}}>
+        <style>{`@keyframes tickerMove{0%{left:100%}100%{left:-100%}}`}</style>
+        {msg}
+      </div>
+    </button>
+  );
+}
+
 function OnlineCounter() {
   const [count, setCount] = useState(null);
 
@@ -3018,7 +2963,7 @@ function OnlineCounter() {
   );
 }
 
-// ─── GAMIFICATION WIDGET ─────────────────────────────────────────────────────
+// ─── GAMIFICATION WIDGET (Perfil) — só créditos e indicação ──────────────────
 const LEVELS_CONFIG = [
   { level:1, name:"Recruta",             xp:0,     color:"#888",    icon:"🥋" },
   { level:2, name:"Cavaleiro de Bronze", xp:500,   color:"#cd7f32", icon:"🛡️" },
@@ -3036,107 +2981,72 @@ function getLevelInfo(xp=0) {
   return { ...cur, next, xpToNext: next?next.xp-xp:0, pct };
 }
 
-function GamificationWidget({ user, onRefresh }) {
-  const [status,   setStatus]   = useState(null);
-  const [history,  setHistory]  = useState(null);
-  const [refCode,  setRefCode]  = useState(null);
-  const [showHist, setShowHist] = useState(false);
-  const [rewards,  setRewards]  = useState([]);
+function GamificationWidget({ user }) {
+  const [status,    setStatus]    = useState(null);
+  const [refCode,   setRefCode]   = useState(null);
+  const [showInfo,  setShowInfo]  = useState(false);
+  const [gamConfig, setGamConfig] = useState([]);
 
   useEffect(()=>{
     api.get("/gamification/status").then(d=>{ if(!d?.error) setStatus(d); });
   },[user?.id]);
 
   const loadRefCode = async () => {
+    if (refCode) { setRefCode(null); return; }
     const d = await api.get("/gamification/referral-code");
     if (!d?.error) setRefCode(d);
   };
 
-  const loadHistory = async () => {
-    const d = await api.get("/gamification/history");
-    if (!d?.error) setHistory(d);
-    setShowHist(true);
+  const loadInfo = async () => {
+    if (showInfo) { setShowInfo(false); return; }
+    const d = await api.get("/gamification/config").catch(()=>null);
+    if (d && !d.error) setGamConfig(d);
+    setShowInfo(true);
   };
 
   if (!status) return null;
 
-  const lvl = getLevelInfo(status.xp||0);
-  const nextLvl = lvl.next;
-
   return (
     <div style={{background:"#0d0d1e",borderRadius:16,padding:16,marginBottom:16,
-      border:`1px solid ${lvl.color}33`}}>
+      border:"1px solid #ffd70022"}}>
 
-      {/* Rewards popup */}
-      {rewards.length > 0 && (
-        <div style={{marginBottom:12}}>
-          {rewards.map((r,i)=>(
-            <div key={i} style={{background:"#ffd70011",border:"1px solid #ffd70033",
-              borderRadius:8,padding:"6px 10px",marginBottom:4,fontSize:12,color:"#ffd700"}}>
-              {r.message}
-            </div>
-          ))}
-          <button onClick={()=>setRewards([])}
-            style={{fontSize:10,color:"#555",background:"transparent",border:"none",cursor:"pointer"}}>
-            Fechar
-          </button>
-        </div>
-      )}
-
-      {/* Nível e XP */}
+      {/* Créditos */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-        <div style={{fontSize:28}}>{lvl.icon}</div>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-            <span style={{fontSize:14,fontWeight:800,color:lvl.color}}>{lvl.name}</span>
-            <span style={{fontSize:10,color:"#555"}}>Nível {lvl.level}</span>
+        <div style={{flex:1,background:"#ffd70011",borderRadius:10,padding:"10px 12px",
+          border:"1px solid #ffd70033",display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:24}}>💰</span>
+          <div>
+            <div style={{fontSize:22,fontWeight:900,color:"#ffd700"}}>{status.credits||0}</div>
+            <div style={{fontSize:9,color:"#555",letterSpacing:1}}>CRÉDITOS</div>
           </div>
-          {/* Barra de XP */}
-          <div style={{background:"#ffffff10",borderRadius:20,height:6,overflow:"hidden"}}>
-            <div style={{width:`${lvl.pct}%`,height:"100%",
-              background:`linear-gradient(90deg,${lvl.color},${nextLvl?.color||lvl.color})`,
-              borderRadius:20,transition:"width 0.5s ease"}}/>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
-            <span style={{fontSize:9,color:"#555"}}>{status.xp||0} XP</span>
-            {nextLvl && <span style={{fontSize:9,color:"#555"}}>faltam {lvl.xpToNext} XP → {nextLvl.name}</span>}
+        </div>
+        <div style={{flex:1,background:"#ff8c0011",borderRadius:10,padding:"10px 12px",
+          border:"1px solid #ff8c0033",display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:24}}>🔥</span>
+          <div>
+            <div style={{fontSize:22,fontWeight:900,color:"#ff8c00"}}>{status.login_streak||0}</div>
+            <div style={{fontSize:9,color:"#555",letterSpacing:1}}>STREAK</div>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{display:"flex",gap:8,marginBottom:12}}>
-        {[
-          {ic:"💰", v:status.credits||0, l:"Créditos", c:"#ffd700"},
-          {ic:"🔥", v:status.login_streak||0, l:"Streak", c:"#ff8c00"},
-          {ic:"⭐", v:status.xp||0, l:"XP Total", c:"#a855f7"},
-        ].map(s=>(
-          <div key={s.l} style={{flex:1,background:"#ffffff06",borderRadius:10,padding:"8px 6px",textAlign:"center",border:`1px solid ${s.c}22`}}>
-            <div style={{fontSize:16}}>{s.ic}</div>
-            <div style={{fontSize:14,fontWeight:900,color:s.c}}>{s.v}</div>
-            <div style={{fontSize:8,color:"#555",letterSpacing:0.5}}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Ações */}
-      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+      {/* Botões */}
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
         <button onClick={loadRefCode}
-          style={{flex:1,padding:"7px 8px",borderRadius:8,border:"none",cursor:"pointer",
-            background:"#22c55e15",color:"#22c55e",fontSize:10,fontWeight:700}}>
-          🎁 Indicar amigo
+          style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",
+            background:refCode?"#22c55e22":"#22c55e15",color:"#22c55e",fontSize:10,fontWeight:700}}>
+          🎁 Indicar amigo {refCode?"▲":"▼"}
         </button>
-        <button onClick={loadHistory}
-          style={{flex:1,padding:"7px 8px",borderRadius:8,border:"none",cursor:"pointer",
+        <button onClick={loadInfo}
+          style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",
             background:"#ffffff08",color:"#888",fontSize:10,fontWeight:700}}>
-          📊 Histórico
+          💡 Como acumular {showInfo?"▲":"▼"}
         </button>
       </div>
 
       {/* Link de indicação */}
       {refCode && (
-        <div style={{marginTop:10,background:"#22c55e11",border:"1px solid #22c55e33",
-          borderRadius:10,padding:10}}>
+        <div style={{background:"#22c55e11",border:"1px solid #22c55e33",borderRadius:10,padding:10,marginBottom:8}}>
           <div style={{fontSize:11,color:"#22c55e",fontWeight:700,marginBottom:6}}>
             🎁 Seu link de indicação
           </div>
@@ -3144,7 +3054,7 @@ function GamificationWidget({ user, onRefresh }) {
             {refCode.link}
           </div>
           <div style={{fontSize:10,color:"#555",marginBottom:8}}>
-            Ganhe <strong style={{color:"#ffd700"}}>50 créditos + 100 XP</strong> por cada amigo que se cadastrar!
+            Ganhe <strong style={{color:"#ffd700"}}>50 créditos</strong> por cada amigo cadastrado!
           </div>
           <button onClick={()=>navigator.clipboard?.writeText(refCode.link).then(()=>alert("Link copiado!"))}
             style={{width:"100%",padding:"7px",borderRadius:8,border:"none",cursor:"pointer",
@@ -3154,27 +3064,108 @@ function GamificationWidget({ user, onRefresh }) {
         </div>
       )}
 
-      {/* Histórico */}
-      {showHist && history && (
-        <div style={{marginTop:10}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#ffd700",marginBottom:8}}>📊 Histórico recente</div>
-          {[...(history.xp||[]).map(x=>({...x,kind:"xp"})), ...(history.credits||[]).map(c=>({...c,kind:"credits"}))]
-            .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
-            .slice(0,10)
-            .map((item,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",
-                borderBottom:"1px solid #ffffff08",fontSize:10}}>
-                <span>{item.kind==="xp"?"⭐":"💰"}</span>
-                <span style={{flex:1,color:"#888"}}>{item.description||item.action||item.type}</span>
-                <span style={{fontWeight:700,color:item.kind==="xp"?"#a855f7":"#ffd700"}}>
-                  +{item.amount} {item.kind==="xp"?"XP":"CR"}
-                </span>
+      {/* Como acumular créditos */}
+      {showInfo && (
+        <div style={{background:"#ffffff05",borderRadius:10,padding:12,border:"1px solid #ffffff08"}}>
+          <div style={{fontSize:10,color:"#ffd700",fontWeight:800,marginBottom:8}}>💰 Como ganhar créditos</div>
+          {gamConfig.filter(c=>c.credits>0&&c.active).length > 0
+            ? gamConfig.filter(c=>c.credits>0&&c.active).map(c=>(
+              <div key={c.action} style={{display:"flex",justifyContent:"space-between",
+                padding:"4px 0",borderBottom:"1px solid #ffffff06",fontSize:10}}>
+                <span style={{color:"#888"}}>{c.label}</span>
+                <span style={{color:"#ffd700",fontWeight:700}}>+{c.credits} CR</span>
               </div>
-            ))}
-          <button onClick={()=>setShowHist(false)}
-            style={{fontSize:10,color:"#555",background:"transparent",border:"none",cursor:"pointer",marginTop:6}}>
-            Fechar
-          </button>
+            ))
+            : [{l:"Indicar amigo",v:50},{l:"Streak 7 dias",v:10},{l:"Streak 30 dias",v:50},
+               {l:"Verificar conta",v:20}].map(c=>(
+              <div key={c.l} style={{display:"flex",justifyContent:"space-between",
+                padding:"4px 0",borderBottom:"1px solid #ffffff06",fontSize:10}}>
+                <span style={{color:"#888"}}>{c.l}</span>
+                <span style={{color:"#ffd700",fontWeight:700}}>+{c.v} CR</span>
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── WARRIOR XP WIDGET (aba Guerreiro) ────────────────────────────────────────
+function WarriorXPWidget({ user }) {
+  const [status,   setStatus]   = useState(null);
+  const [showInfo, setShowInfo] = useState(false);
+  const [gamConfig,setGamConfig]= useState([]);
+
+  useEffect(()=>{
+    api.get("/gamification/status").then(d=>{ if(!d?.error) setStatus(d); });
+  },[user?.id]);
+
+  const loadInfo = async () => {
+    if (showInfo) { setShowInfo(false); return; }
+    const d = await api.get("/gamification/config").catch(()=>null);
+    if (d && !d.error) setGamConfig(d);
+    setShowInfo(true);
+  };
+
+  if (!status) return null;
+  const lvl = getLevelInfo(status.xp||0);
+
+  return (
+    <div style={{background:"#0d0d1e",borderRadius:16,padding:14,marginBottom:14,
+      border:`1px solid ${lvl.color}33`}}>
+      {/* Nível e XP */}
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <span style={{fontSize:26}}>{lvl.icon}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:800,color:lvl.color}}>{lvl.name} <span style={{fontSize:10,color:"#555",fontWeight:400}}>Nível {lvl.level}</span></div>
+          <div style={{background:"#ffffff10",borderRadius:20,height:5,overflow:"hidden",margin:"4px 0"}}>
+            <div style={{width:`${lvl.pct}%`,height:"100%",
+              background:`linear-gradient(90deg,${lvl.color},${lvl.next?.color||lvl.color})`,
+              borderRadius:20}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#555"}}>
+            <span>{status.xp||0} XP</span>
+            {lvl.next && <span>faltam {lvl.xpToNext} XP → {lvl.next.name}</span>}
+          </div>
+        </div>
+      </div>
+
+      <button onClick={loadInfo}
+        style={{width:"100%",padding:"7px",borderRadius:8,border:"none",cursor:"pointer",
+          background:"#ffffff08",color:"#888",fontSize:10,fontWeight:700}}>
+        💡 Como acumular XP {showInfo?"▲":"▼"}
+      </button>
+
+      {showInfo && (
+        <div style={{marginTop:8,background:"#ffffff05",borderRadius:10,padding:10,border:"1px solid #ffffff08"}}>
+          <div style={{fontSize:10,color:"#a855f7",fontWeight:800,marginBottom:8}}>⭐ Como ganhar XP</div>
+          {gamConfig.filter(c=>c.xp>0&&c.active).length > 0
+            ? gamConfig.filter(c=>c.xp>0&&c.active).map(c=>(
+              <div key={c.action} style={{display:"flex",justifyContent:"space-between",
+                padding:"4px 0",borderBottom:"1px solid #ffffff06",fontSize:10}}>
+                <span style={{color:"#888"}}>{c.label}</span>
+                <span style={{color:"#a855f7",fontWeight:700}}>+{c.xp} XP</span>
+              </div>
+            ))
+            : [{l:"Login diário",v:10},{l:"Streak 7 dias",v:50},{l:"Streak 30 dias",v:200},
+               {l:"Indicar amigo",v:100},{l:"Verificar conta",v:200}].map(c=>(
+              <div key={c.l} style={{display:"flex",justifyContent:"space-between",
+                padding:"4px 0",borderBottom:"1px solid #ffffff06",fontSize:10}}>
+                <span style={{color:"#888"}}>{c.l}</span>
+                <span style={{color:"#a855f7",fontWeight:700}}>+{c.v} XP</span>
+              </div>
+            ))
+          }
+          <div style={{marginTop:8,fontSize:10,color:"#555",fontWeight:700,letterSpacing:1}}>NÍVEIS</div>
+          {LEVELS_CONFIG.map(l=>(
+            <div key={l.level} style={{display:"flex",alignItems:"center",gap:8,
+              padding:"3px 0",fontSize:10}}>
+              <span>{l.icon}</span>
+              <span style={{flex:1,color:l.color,fontWeight:700}}>{l.name}</span>
+              <span style={{color:"#555"}}>{l.xp===0?"início":`${l.xp.toLocaleString()} XP`}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -3223,10 +3214,8 @@ function WarriorTab({ user }) {
 
   return (
     <div>
-      <div style={{textAlign:"center",marginBottom:16}}>
-        <div style={{fontSize:11,color:lvl.color,fontWeight:700}}>{lvl.icon} {lvl.name}</div>
-        <div style={{fontSize:10,color:"#555",marginTop:2}}>Nível {lvl.level} · {user?.xp||0} XP</div>
-      </div>
+      {/* Widget de XP do Guerreiro */}
+      <WarriorXPWidget user={user}/>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 80px 1fr",gap:8,alignItems:"start"}}>
         {/* Esquerda */}
@@ -3601,13 +3590,18 @@ function EditProfileScreen({ user, onClose, onSave }) {
         {/* Admin + Sair */}
         <div style={{marginTop:24,display:"flex",flexDirection:"column",gap:8}}>
           {user?.is_admin && (
-            <button onClick={()=>{ onClose(); setTimeout(()=>document.querySelector('[data-admin]')?.click(),100); }}
+            <button
               style={{width:"100%",padding:"11px",borderRadius:12,border:"1px solid #ffd70033",
                 cursor:"pointer",fontSize:13,fontWeight:700,background:"#ffd70011",color:"#ffd700"}}
               onClick={()=>{ onClose(); window.__openAdmin&&window.__openAdmin(); }}>
               👑 Painel Admin
             </button>
           )}
+          <button onClick={()=>{ onClose(); setTimeout(()=>window.__openFeedback&&window.__openFeedback(), 100); }}
+            style={{width:"100%",padding:"11px",borderRadius:12,border:"1px solid #a855f733",
+              cursor:"pointer",fontSize:13,fontWeight:700,background:"#a855f711",color:"#a855f7"}}>
+            💬 Feedback / Sugestões
+          </button>
           <button onClick={()=>{ onClose(); window.__colezzareLogout&&window.__colezzareLogout(); }}
             style={{width:"100%",padding:"11px",borderRadius:12,border:"1px solid #ff444433",
               cursor:"pointer",fontSize:13,fontWeight:700,background:"#ff444411",color:"#ff6666"}}>
@@ -4481,6 +4475,7 @@ function UserDashboardModal({ user: u, reports, onClose, onAction }) {
               onSuspend={(days)=>onAction("suspend",u.id,days)}
               onBan={()=>onAction("ban",u.id)}
               onDelete={()=>onAction("delete",u.id)}
+              onChangePlan={(plan)=>onAction("plan",u.id,plan)}
               onResetPassword={async(pass)=>{
                 await api.post(`/auth/admin-reset-password`,{userId:u.id,password:pass});
               }}
@@ -4494,6 +4489,150 @@ function UserDashboardModal({ user: u, reports, onClose, onAction }) {
 }
 
 // ─── RANKING SCREEN ───────────────────────────────────────────────────────────
+// ─── MARKETPLACE SCREEN ──────────────────────────────────────────────────────
+function MarketplaceScreen({ user, onOpenFigure }) {
+  const isBasic = user?.plan === "basic" || user?.plan === "pro" || user?.is_admin;
+  const [listings, setListings] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [filter,   setFilter]   = useState("all"); // all | selling | wanted
+
+  useEffect(()=>{ load(); },[]);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [sell, want] = await Promise.all([
+        fetch(`${API_URL}/marketplace/listings`).then(r=>r.json()).catch(()=>[]),
+        fetch(`${API_URL}/marketplace/wanted`).then(r=>r.json()).catch(()=>[]),
+      ]);
+      const items = [
+        ...(sell||[]).map(l=>({...l, kind:"selling"})),
+        ...(want||[]).map(w=>({...w, kind:"wanted"})),
+      ].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+      setListings(items);
+    } catch(e) {}
+    setLoading(false);
+  };
+
+  const filtered = filter==="all" ? listings
+    : listings.filter(l=>l.kind===filter);
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {/* Header */}
+      <div style={{flexShrink:0,padding:"14px 16px 10px",
+        background:"#07070fdd",borderBottom:"1px solid #ffd70018"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:18,fontWeight:900,
+          color:"#ffd700",marginBottom:10}}>🛒 Marketplace</div>
+
+        {/* Filtros */}
+        <div style={{display:"flex",gap:6}}>
+          {[
+            {k:"all",     l:"Todos"},
+            {k:"selling", l:"🏷️ À Venda"},
+            {k:"wanted",  l:"🔍 Procurando"},
+          ].map(f=>(
+            <button key={f.k} onClick={()=>setFilter(f.k)}
+              style={{padding:"5px 12px",borderRadius:20,border:"none",cursor:"pointer",
+                fontSize:10,fontWeight:700,
+                background:filter===f.k?"#ffd700":"#ffffff08",
+                color:filter===f.k?"#000":"#555"}}>
+              {f.l}
+            </button>
+          ))}
+        </div>
+
+        {/* Banner free */}
+        {!isBasic && (
+          <div style={{marginTop:10,background:"#ffd70011",border:"1px solid #ffd70033",
+            borderRadius:10,padding:"8px 12px",fontSize:11,color:"#ffd700"}}>
+            🔒 <strong>Plano Basic</strong> — veja preços, contatos e anuncie suas figuras
+          </div>
+        )}
+      </div>
+
+      <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
+        touchAction:"pan-y",padding:16}}>
+
+        {loading && (
+          <div style={{textAlign:"center",padding:"40px 0",color:"#555"}}>
+            <div style={{fontSize:32,marginBottom:12}}>⏳</div>
+            Carregando anúncios...
+          </div>
+        )}
+
+        {!loading && filtered.length===0 && (
+          <div style={{textAlign:"center",padding:"40px 0"}}>
+            <div style={{fontSize:40,marginBottom:12}}>🛒</div>
+            <div style={{fontSize:14,color:"#555"}}>Nenhum anúncio ainda</div>
+            {isBasic && <div style={{fontSize:11,color:"#444",marginTop:8}}>
+              Seja o primeiro a anunciar!
+            </div>}
+          </div>
+        )}
+
+        {!loading && filtered.map((item,i)=>{
+          const fig = ALL_FIGURES.find(f=>f.id===item.figure_id);
+          const imgUrl = `https://res.cloudinary.com/dr3sxytes/image/upload/figures/${item.figure_id}/1.jpg`;
+          const isSelling = item.kind==="selling";
+
+          return (
+            <div key={i} onClick={()=>fig&&onOpenFigure(fig)}
+              style={{background:"#0d0d1e",borderRadius:12,padding:12,marginBottom:8,
+                border:`1px solid ${isSelling?"#ffd70022":"#a855f722"}`,
+                cursor:fig?"pointer":"default",display:"flex",gap:10,alignItems:"center"}}>
+
+              {/* Imagem */}
+              <img src={imgUrl} alt=""
+                style={{width:48,height:48,borderRadius:8,objectFit:"cover",
+                  background:"#ffffff08",flexShrink:0}}
+                onError={e=>{e.target.style.display="none";}}/>
+
+              {/* Info */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:800,color:"#dde",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                  {fig?.name || item.figure_id}
+                </div>
+                <div style={{fontSize:10,color:"#555",marginTop:2}}>
+                  {fig?.line || ""} · {isSelling?"À venda":"Procurando"}
+                </div>
+                {item.description && (
+                  <div style={{fontSize:10,color:"#666",marginTop:2,
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {item.description}
+                  </div>
+                )}
+              </div>
+
+              {/* Preço / Badge */}
+              <div style={{textAlign:"right",flexShrink:0}}>
+                {isSelling ? (
+                  isBasic ? (
+                    <div style={{fontSize:14,fontWeight:900,color:"#ffd700"}}>
+                      {item.currency} {item.price}
+                    </div>
+                  ) : (
+                    <div style={{fontSize:16,color:"#555",letterSpacing:2}}>●●●</div>
+                  )
+                ) : (
+                  <div style={{fontSize:10,color:"#a855f7",fontWeight:700,
+                    background:"#a855f711",borderRadius:6,padding:"3px 8px"}}>
+                    🔍 Busca
+                  </div>
+                )}
+                {isSelling && item.condition && (
+                  <div style={{fontSize:9,color:"#555",marginTop:2}}>{item.condition}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RankingScreen({ user }) {
   const [line,    setLine]    = useState("ex");
   const [loading, setLoading] = useState(true);
@@ -4620,7 +4759,7 @@ function RankingScreen({ user }) {
 }
 
 // ─── USER ADMIN CARD ─────────────────────────────────────────────────────────
-function UserAdminCard({ u, onProfile, onSuspend, onBan, onDelete, onResetPassword, hideProfile=false }) {
+function UserAdminCard({ u, onProfile, onSuspend, onBan, onDelete, onResetPassword, onChangePlan, hideProfile=false }) {
   const [punOpen,      setPunOpen]      = useState(false);
   const [resetOpen,    setResetOpen]    = useState(false);
   const [punAction,    setPunAction]    = useState(null);
@@ -4682,6 +4821,29 @@ function UserAdminCard({ u, onProfile, onSuspend, onBan, onDelete, onResetPasswo
           );
         })()}
       </div>
+
+      {/* Plano */}
+      {!u.is_admin && onChangePlan && (
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:5}}>PLANO</div>
+          <div style={{display:"flex",gap:5}}>
+            {["free","basic","plus"].map(p=>(
+              <button key={p} onClick={()=>{
+                if(u.plan===p) return;
+                if(!window.confirm(`Alterar plano de ${u.plan?.toUpperCase()} para ${p.toUpperCase()}?`)) return;
+                onChangePlan(p);
+              }}
+                style={{flex:1,padding:"5px 4px",borderRadius:7,border:"none",cursor:"pointer",
+                  fontSize:10,fontWeight:700,
+                  background:u.plan===p?"#ffd70033":"#ffffff08",
+                  color:u.plan===p?"#ffd700":"#555",
+                  outline:u.plan===p?"1px solid #ffd70055":"none"}}>
+                {p==="free"?"🔓 Free":p==="basic"?"⭐ Basic":"💎 Plus"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Botões — 3 colunas */}
       {!u.is_admin && (
@@ -4980,6 +5142,106 @@ function FiguresAdminTab({ onSave, onDelete }) {
   );
 }
 
+// ─── GAMIFICATION ADMIN TAB ──────────────────────────────────────────────────
+function GamificationAdminTab() {
+  const [config,   setConfig]   = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(null);
+  const [msg,      setMsg]      = useState("");
+
+  useEffect(()=>{ load(); },[]);
+
+  const load = async () => {
+    setLoading(true);
+    const d = await api.get("/gamification/config").catch(()=>null);
+    if (d && !d.error) setConfig(d);
+    setLoading(false);
+  };
+
+  const save = async (item) => {
+    setSaving(item.action);
+    const d = await api.put(`/gamification/config/${item.action}`, {
+      xp: Number(item.xp)||0,
+      credits: Number(item.credits)||0,
+      active: item.active,
+      label: item.label,
+    }).catch(()=>null);
+    setSaving(null);
+    if (d && !d.error) {
+      setMsg("Salvo!");
+      setTimeout(()=>setMsg(""),2000);
+    }
+  };
+
+  const update = (action, field, value) => {
+    setConfig(prev=>prev.map(c=>c.action===action?{...c,[field]:value}:c));
+  };
+
+  if (loading) return <div style={{padding:20,color:"#555",textAlign:"center"}}>Carregando...</div>;
+
+  return (
+    <div style={{padding:"16px 0"}}>
+      <div style={{fontSize:14,fontWeight:800,color:"#ffd700",marginBottom:4}}>⚙️ Configuração de Gamificação</div>
+      <div style={{fontSize:11,color:"#555",marginBottom:16}}>
+        Defina quantos XP e Créditos cada ação concede. Os valores são espelhados no app.
+      </div>
+
+      {msg && <div style={{background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:8,
+        padding:"8px 12px",marginBottom:12,fontSize:12,color:"#22c55e"}}>{msg}</div>}
+
+      {config.map(item=>(
+        <div key={item.action} style={{background:"#0d0d1e",borderRadius:12,padding:12,
+          marginBottom:8,border:`1px solid ${item.active?"#ffffff10":"#ff444422"}`,
+          opacity:item.active?1:0.6}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#dde"}}>{item.label}</div>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1}}>{item.action}</div>
+            </div>
+            <button onClick={()=>{ update(item.action,"active",!item.active); }}
+              style={{padding:"4px 10px",borderRadius:6,border:"none",cursor:"pointer",fontSize:10,
+                background:item.active?"#22c55e22":"#ff444422",
+                color:item.active?"#22c55e":"#f87171",fontWeight:700}}>
+              {item.active?"ATIVO":"INATIVO"}
+            </button>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:9,color:"#a855f7",fontWeight:700,marginBottom:4}}>⭐ XP</div>
+              <input type="number" min="0" value={item.xp}
+                onChange={e=>update(item.action,"xp",e.target.value)}
+                style={{width:"100%",padding:"6px 8px",borderRadius:6,
+                  background:"#ffffff08",border:"1px solid #a855f733",
+                  color:"#a855f7",fontSize:13,fontWeight:700,outline:"none",textAlign:"center"}}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:9,color:"#ffd700",fontWeight:700,marginBottom:4}}>💰 Créditos</div>
+              <input type="number" min="0" value={item.credits}
+                onChange={e=>update(item.action,"credits",e.target.value)}
+                style={{width:"100%",padding:"6px 8px",borderRadius:6,
+                  background:"#ffffff08",border:"1px solid #ffd70033",
+                  color:"#ffd700",fontSize:13,fontWeight:700,outline:"none",textAlign:"center"}}/>
+            </div>
+            <button onClick={()=>save(item)}
+              disabled={saving===item.action}
+              style={{padding:"8px 14px",borderRadius:8,border:"none",cursor:"pointer",
+                background:"#ffd700",color:"#000",fontSize:11,fontWeight:800,
+                marginTop:16,opacity:saving===item.action?0.5:1}}>
+              {saving===item.action?"...":"💾"}
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {config.length===0 && (
+        <div style={{textAlign:"center",padding:20,color:"#555",fontSize:12}}>
+          Nenhuma configuração encontrada. Verifique a tabela gamification_config no Supabase.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminScreen({ user, onClose }) {
   const [tab, setTab] = useState("pending");
   const [suggestions,    setSuggestions]    = useState([]);
@@ -5077,6 +5339,7 @@ function AdminScreen({ user, onClose }) {
     {k:"approved",      l:"✅ Aprovadas"},
     {k:"figures",       l:"🎭 Figuras"},
     {k:"catalog",       l:"📂 Catálogo"},
+    {k:"gamification",  l:"⚙️ Gamificação"},
   ];
 
   // ── Estados do Catálogo ──
@@ -5357,6 +5620,7 @@ function AdminScreen({ user, onClose }) {
                   onSuspend={(days)=>suspendUser(u.id,days)}
                   onBan={()=>banUser(u.id)}
                   onDelete={()=>deleteUser(u.id)}
+                  onChangePlan={(plan)=>changePlan(u.id,plan)}
                   onResetPassword={async(newPass)=>{
                     const r = await api.post(`/auth/admin-reset-password`,{userId:u.id,password:newPass});
                     if(r?.message) setActionMsg("✅ Senha resetada!");
@@ -5471,6 +5735,10 @@ function AdminScreen({ user, onClose }) {
             )}
           </>
         )}
+
+        {/* ABA GAMIFICAÇÃO */}
+        {tab==="gamification" && <GamificationAdminTab/>}
+
       {userDashboard && (
         <UserDashboardModal
           user={userDashboard}
@@ -5668,7 +5936,8 @@ export default function App() {
 
   useEffect(() => { 
     window.__colezzareLogout = handleLogout;
-    window.__openAdmin = () => setAdminScreen(true); 
+    window.__openAdmin = () => setAdminScreen(true);
+    window.__openFeedback = () => setReportModal(true); 
     return () => { window.__colezzareLogout = null; };
   });
 
@@ -6067,7 +6336,7 @@ export default function App() {
   });
 
   const nOwned=Object.keys(owned).length,nWished=Object.keys(wished).length;
-  const nListings=Object.keys(listings).filter(k=>listings[k]?.vendendo).length;
+  const nListings=Object.keys(listings).filter(k=>listings[k]?.ativo||listings[k]?.id||listings[k]?.listing_id).length;
   const pct=Math.round(nOwned/FIGURES.length*100);
   const hasFilter=fLine!=="Todas"||fSaga!=="Todas"||fTipo!=="Todos"||fVer!=="Todas"||fStatus!=="Todos"||fMarket!=="Todos";
   const clearFilters=()=>{setFLine("Todas");setFSaga("Todas");setFTipo("Todos");setFVer("Todas");setFStatus("Todos");setFMarket("Todos");setFCatMode("saga");};
@@ -6240,6 +6509,26 @@ export default function App() {
             </div>
           </button>
           <div style={{flex:1}}/>
+          {/* Badge admin de pendências */}
+          {isAdmin() && (adminPending.suggestions+adminPending.reports+adminPending.verifications) > 0 && (
+            <button onClick={()=>setAdminScreen(true)}
+              style={{background:"#f8717122",border:"1px solid #f8717144",borderRadius:8,
+                padding:"4px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+              <span style={{fontSize:11}}>⚠️</span>
+              <span style={{fontSize:10,fontWeight:800,color:"#f87171"}}>
+                {adminPending.suggestions+adminPending.reports+adminPending.verifications}
+              </span>
+            </button>
+          )}
+          {/* Botão upgrade para free */}
+          {!isAdmin() && !isPlan("basic") && (
+            <button onClick={()=>setUpgradeModal("basic")}
+              style={{background:"#ffd70022",border:"1px solid #ffd70044",borderRadius:8,
+                padding:"4px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+              <span style={{fontSize:11}}>⭐</span>
+              <span style={{fontSize:10,fontWeight:800,color:"#ffd700"}}>Basic</span>
+            </button>
+          )}
           {notifs.length > 0 && (
             <button onClick={()=>setNotifs([])}
               style={{background:"transparent",border:"none",cursor:"pointer",
@@ -6255,6 +6544,11 @@ export default function App() {
           <OnlineCounter/>
         </div>
       </div>
+      )}
+
+      {/* TICKER VERIFICAÇÃO — só para não verificados */}
+      {user && !user.verified && (
+        <VerificationTicker onOpen={()=>setVerificationScreen(true)}/>
       )}
 
       {/* SEARCH + FILTER TOGGLE — só no catálogo */}
@@ -6416,7 +6710,7 @@ export default function App() {
       )}
 
       {/* ÁREA DE CONTEÚDO COM SCROLL */}
-      <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",overflowX:"hidden",position:"relative",display:tab==="ranking"?"none":"flex",flexDirection:"column"}}>
+      <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",overflowX:"hidden",position:"relative",display:tab==="ranking"||tab==="market"?"none":"flex",flexDirection:"column"}}>
 
         {/* BARRAS DE PROGRESSO POR LINHA — só em Tenho e Quero */}
         {(tab==="owned"||tab==="wish") && (() => {
@@ -6542,6 +6836,13 @@ export default function App() {
         <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
           touchAction:"pan-y",background:"#06060f",display:"flex",flexDirection:"column"}}>
           <RankingScreen user={user}/>
+        </div>
+      )}
+
+      {tab==="market" && (
+        <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
+          touchAction:"pan-y",background:"#06060f",display:"flex",flexDirection:"column"}}>
+          <MarketplaceScreen user={user} onOpenFigure={f=>{setModal(f);}}/>
         </div>
       )}
 
