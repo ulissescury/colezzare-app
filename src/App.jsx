@@ -3173,100 +3173,1908 @@ function WarriorXPWidget({ user }) {
 }
 
 // ─── WARRIOR TAB ─────────────────────────────────────────────────────────────
-function WarriorTab({ user }) {
-  const lvl = getLevelInfo(user?.xp||0);
+// ─── GAME CONSTANTS ──────────────────────────────────────────────────────────
+const ARMOR_SLOTS = [
+  {key:"helm",      name:"Helm",      icon:"⛑️"},
+  {key:"armor",     name:"Armor",     icon:"🛡️"},
+  {key:"belt",      name:"Belt",      icon:"🔶"},
+  {key:"gauntlets", name:"Gauntlets", icon:"🥊"},
+  {key:"leggings",  name:"Leggings",  icon:"👖"},
+  {key:"boots",     name:"Boots",     icon:"👢"},
+];
 
-  const SLOTS = [
-    {id:"helmet",  label:"Elmo/Capacete",    icon:"⛑️",  pos:"left",  equipped:null},
-    {id:"hair",    label:"Cabelo",            icon:"💇",  pos:"left",  equipped:null},
-    {id:"face",    label:"Rosto",             icon:"😶",  pos:"left",  equipped:null},
-    {id:"chest",   label:"Peito/Costas",      icon:"🛡️",  pos:"left",  equipped:"Armadura Pégaso"},
-    {id:"shoulder",label:"Ombreiras",         icon:"🦺",  pos:"left",  equipped:null},
-    {id:"belt",    label:"Cinto",             icon:"📿",  pos:"left",  equipped:null},
-    {id:"cape",    label:"Capa/Asas",         icon:"🦸",  pos:"left",  equipped:null},
-    {id:"bicepL",  label:"Bíceps Esq",        icon:"💪",  pos:"right", equipped:null},
-    {id:"bicepR",  label:"Bíceps Dir",        icon:"💪",  pos:"right", equipped:null},
-    {id:"forearm", label:"Antebraço",         icon:"🤜",  pos:"right", equipped:null},
-    {id:"hands",   label:"Mãos",              icon:"🧤",  pos:"right", equipped:null},
-    {id:"thigh",   label:"Protetor Coxa",     icon:"🦵",  pos:"right", equipped:null},
-    {id:"knee",    label:"Joelheira",         icon:"🦿",  pos:"right", equipped:null},
-    {id:"shin",    label:"Caneleira",         icon:"🦶",  pos:"right", equipped:null},
-    {id:"foot",    label:"Calçado/Grevas",    icon:"👟",  pos:"right", equipped:null},
-  ];
+// Imagens de armadura por cavaleiro/slot/level
+// Adicione mais cavaleiros conforme tiver assets
+// Imagens das armaduras — por slot e level, independente do cavaleiro
+const ARMOR_IMAGES = {
+  helm:      { 1:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/helm/lv1.png",      2:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/helm/lv2.png",      3:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/helm/lv3.png" },
+  armor:     { 1:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/armor/lv1.png",     2:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/armor/lv2.png",     3:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/armor/lv3.png" },
+  belt:      { 1:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/belt/lv1.png",      2:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/belt/lv2.png",      3:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/belt/lv3.png" },
+  gauntlets: { 1:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/gauntlets/lv1.png", 2:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/gauntlets/lv2.png", 3:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/gauntlets/lv3.png" },
+  leggings:  { 1:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/leggings/lv1.png",  2:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/leggings/lv2.png",  3:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/leggings/lv3.png" },
+  boots:     { 1:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/boots/lv1.png",     2:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/boots/lv2.png",     3:"https://res.cloudinary.com/dr3sxytes/image/upload/game/pegasus/boots/lv3.png" },
+};
 
-  const leftSlots  = SLOTS.filter(s=>s.pos==="left");
-  const rightSlots = SLOTS.filter(s=>s.pos==="right");
+function getArmorImg(cavaleiro, slotKey, level) {
+  return ARMOR_IMAGES[slotKey]?.[parseInt(level)] || null;
+}
 
-  const Slot = ({slot}) => (
-    <div style={{background:slot.equipped?"#ffd70010":"#0d0d1e",
-      border:`1px solid ${slot.equipped?"#ffd70044":"#ffffff10"}`,
-      borderRadius:8,padding:"6px 8px",display:"flex",alignItems:"center",
-      gap:6,cursor:"pointer",marginBottom:5}}>
-      <span style={{fontSize:16}}>{slot.icon}</span>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:0.5}}>{slot.label.toUpperCase()}</div>
-        {slot.equipped
-          ? <div style={{fontSize:10,color:"#ffd700",fontWeight:700}}>{slot.equipped}</div>
-          : <div style={{fontSize:10,color:"#333"}}>— vazio —</div>}
+const LV_COLORS = ["","#9e7b4a","#aaaaaa","#d4af37","#8b3a13","#cc2200","#1565c0","#e0e0e0"];
+
+const ARMOR_BONUS = {
+  helm:      [{st:"ata",pct:[2.00,3.28,4.10,5.12,6.40,8.00,10.00]},{st:"def",pct:[0,0,0,0,1.28,1.60,2.00]}],
+  armor:     [{st:"def",pct:[7.00,11.47,14.34,17.92,22.40,28.00,35.00]},{st:"vel",pct:[0,0,0,0,0,0,5.00]}],
+  belt:      [{st:"est",pct:[1.00,1.64,2.05,2.56,3.20,4.00,5.00]},{st:"ata",pct:[0,0,0,0,3.20,4.00,5.00]}],
+  gauntlets: [{st:"ata",pct:[1.40,2.29,2.87,1.54,1.92,2.40,3.00]},{st:"vel",pct:[0,0,0,3.58,4.48,5.60,7.00]}],
+  leggings:  [{st:"ata",pct:[5.40,8.85,11.06,13.82,17.28,21.60,27.00]},{st:"def",pct:[0,0,0,0,0,3.20,4.00]}],
+  boots:     [{st:"def",pct:[3.20,5.24,6.55,8.19,10.24,12.80,16.00]},{st:"est",pct:[0,0.98,1.23,1.54,1.92,2.40,3.00]}],
+};
+
+const FUSE_CFG = [
+  {lv:1,ki:50,   frags:20,   fa:0,fb:0,fc:0, time_s:10,  label:"1→2"},
+  {lv:2,ki:150,  frags:60,   fa:0,fb:0,fc:0, time_s:20,  label:"2→3"},
+  {lv:3,ki:400,  frags:200,  fa:0,fb:0,fc:0, time_s:30,  label:"3→4"},
+  {lv:4,ki:1000, frags:600,  fa:0,fb:0,fc:0, time_s:40,  label:"4→5"},
+  {lv:5,ki:2500, frags:1800, fa:0,fb:0,fc:0, time_s:50,  label:"5→6"},
+  {lv:6,ki:6000, frags:5000, fa:1,fb:1,fc:1, time_s:60,  label:"6→7"},
+];
+
+function calcArmorStats(char, inventory) {
+  const slots = char.slots || {};
+  const base = { ata: char.ata||0, def: char.def||0, vel: char.vel||0, int: char.int_stat||0, est: char.est||0 };
+  const bonus = { ata:0, def:0, vel:0, int:0, est:0 };
+  ARMOR_SLOTS.forEach(s => {
+    const eq = slots[s.key];
+    if (!eq) return;
+    const bList = ARMOR_BONUS[s.key]||[];
+    bList.forEach(b => {
+      const pct = b.pct[eq.level-1]||0;
+      if (pct > 0) bonus[b.st] += base[b.st] * (pct/100);
+    });
+  });
+  return { base, bonus, total: Object.fromEntries(Object.keys(base).map(k=>[k, Math.floor(base[k]+(bonus[k]||0))])) };
+}
+
+const CAVALEIROS = {
+  seiya:  { nome:"Seiya de Pégaso",    icon:"🔥", arch:"Crítico e Velocidade",   cor:"#ff6b35", atributos:["ata","vel"] },
+  shiryu: { nome:"Shiryu de Dragão",   icon:"🐉", arch:"Tank e Resistência",     cor:"#22c55e", atributos:["def","est"] },
+  hyoga:  { nome:"Hyoga de Cisne",     icon:"❄️", arch:"Controle e Debuffs",     cor:"#38bdf8", atributos:["int","vel"] },
+  shun:   { nome:"Shun de Andrômeda",  icon:"🌿", arch:"Defesa e Escalada",      cor:"#a855f7", atributos:["est","int"] },
+  ikki:   { nome:"Ikki de Fênix",      icon:"🦅", arch:"Burst e Agressão",       cor:"#f59e0b", atributos:["ata","int"] },
+};
+
+const PERFIS = {
+  ofensivo:     { nome:"Ofensivo",     icon:"⚔️",  cor:"#ef4444", stats:{ata:5,def:2,vel:4,int:3,est:3} },
+  defensivo:    { nome:"Defensivo",    icon:"🛡️",  cor:"#22c55e", stats:{ata:2,def:5,vel:3,int:3,est:4} },
+  velocidade:   { nome:"Velocidade",   icon:"⚡",  cor:"#38bdf8", stats:{ata:3,def:2,vel:5,int:4,est:3} },
+  inteligencia: { nome:"Inteligência", icon:"🧠",  cor:"#a855f7", stats:{ata:3,def:3,vel:4,int:5,est:2} },
+  estamina:     { nome:"Estamina",     icon:"💪",  cor:"#f59e0b", stats:{ata:3,def:4,vel:2,int:3,est:5} },
+};
+
+// Tabela de perfis internos — valores por resposta
+const PERFIL_VALS = {
+  ata: { ata:4,   def:2,   vel:3.5, int:2,   est:2.5 },
+  def: { ata:2,   def:4,   vel:2.5, int:2,   est:3.5 },
+  vel: { ata:2,   def:2,   vel:4,   int:3.5, est:2.5 },
+  int: { ata:2,   def:2.5, vel:3.5, int:4,   est:2   },
+  est: { ata:2,   def:3.5, vel:2,   int:2.5, est:4   },
+};
+
+// 20 perguntas — sem grupos, cada resposta tem valores fixos
+const QUIZ_BANCO = [
+  { texto:"Você encontra um mapa incompleto. O que faz?", respostas:[
+    { texto:"Confio no meu instinto e sigo em frente",             tipo:"ata" },
+    { texto:"Prefiro garantir que todos cheguem bem",              tipo:"def" },
+    { texto:"Busco um caminho que funcione melhor",                tipo:"vel" },
+    { texto:"Preciso entender o contexto antes de decidir",        tipo:"int" },
+    { texto:"Avanço com calma, ajustando conforme necessário",     tipo:"est" },
+  ]},
+  { texto:"Uma competição importante está prestes a começar.", respostas:[
+    { texto:"Quero estar na frente desde o primeiro momento",      tipo:"ata" },
+    { texto:"Me preocupo em não prejudicar ninguém ao redor",      tipo:"def" },
+    { texto:"Prefiro me adaptar ao ritmo da situação",             tipo:"vel" },
+    { texto:"Estudo o cenário antes de tomar qualquer atitude",    tipo:"int" },
+    { texto:"Me preparo para o que for necessário, sem pressa",    tipo:"est" },
+  ]},
+  { texto:"Uma ponte antiga parece instável.", respostas:[
+    { texto:"Só saberei se ela aguenta se testar",                 tipo:"ata" },
+    { texto:"Quero ter certeza de que ninguém vai se machucar",    tipo:"def" },
+    { texto:"Procuro outra forma de chegar ao destino",            tipo:"vel" },
+    { texto:"Avalio os sinais antes de qualquer decisão",          tipo:"int" },
+    { texto:"Espero o tempo necessário para ter mais clareza",     tipo:"est" },
+  ]},
+  { texto:"Você encontra um animal ferido.", respostas:[
+    { texto:"Tomo as rédeas da situação sem hesitar",              tipo:"ata" },
+    { texto:"Faço o que for preciso para que ele fique seguro",    tipo:"def" },
+    { texto:"Busco o recurso mais adequado para ajudar",           tipo:"vel" },
+    { texto:"Quero entender a gravidade antes de agir",            tipo:"int" },
+    { texto:"Fico ao lado dele pelo tempo que for preciso",        tipo:"est" },
+  ]},
+  { texto:"Um grupo está em conflito e ninguém cede.", respostas:[
+    { texto:"Entro na conversa e resolvo direto",                  tipo:"ata" },
+    { texto:"Me importo mais em preservar as relações",            tipo:"def" },
+    { texto:"Encontro um meio-termo que funcione para todos",      tipo:"vel" },
+    { texto:"Escuto cada lado antes de formar uma opinião",        tipo:"int" },
+    { texto:"Aguardo o momento certo para me posicionar",          tipo:"est" },
+  ]},
+  { texto:"Alguém próximo está passando por dificuldades.", respostas:[
+    { texto:"Não consigo ficar parado sem fazer nada",             tipo:"ata" },
+    { texto:"Coloco as necessidades dessa pessoa acima das minhas",tipo:"def" },
+    { texto:"Ofereço alternativas práticas para a situação",       tipo:"vel" },
+    { texto:"Quero compreender a raiz do problema antes de ajudar",tipo:"int" },
+    { texto:"Estou disposto a acompanhar esse processo pelo tempo que durar", tipo:"est" },
+  ]},
+  { texto:"Você ouve um som estranho vindo de uma floresta.", respostas:[
+    { texto:"Sinto que devo ir até lá sem pensar muito",           tipo:"ata" },
+    { texto:"Chamo alguém para que não fique ninguém exposto",     tipo:"def" },
+    { texto:"Circulo a área até entender melhor o que acontece",   tipo:"vel" },
+    { texto:"Identifico padrões no som antes de qualquer atitude", tipo:"int" },
+    { texto:"Aguardo para ver se o som se repete",                 tipo:"est" },
+  ]},
+  { texto:"Um viajante pede sua ajuda em terreno desconhecido.", respostas:[
+    { texto:"Assumo a liderança sem hesitar",                      tipo:"ata" },
+    { texto:"Minha prioridade é que ele chegue em segurança",      tipo:"def" },
+    { texto:"Já penso na rota mais eficiente para ele",            tipo:"vel" },
+    { texto:"Quero entender bem a situação antes de indicar caminho", tipo:"int" },
+    { texto:"Acompanho no ritmo dele, sem forçar",                 tipo:"est" },
+  ]},
+  { texto:"Você precisa cruzar uma cidade desconhecida.", respostas:[
+    { texto:"Me lanço no caminho confiando que vou resolver",      tipo:"ata" },
+    { texto:"Prefiro ir com alguém para não correr riscos",        tipo:"def" },
+    { texto:"Já mapeio mentalmente a melhor forma de percorrer",   tipo:"vel" },
+    { texto:"Observo o ambiente e coleto informações antes de sair",tipo:"int" },
+    { texto:"Caminho no meu ritmo, sem me apressar",               tipo:"est" },
+  ]},
+  { texto:"Surge uma oportunidade inesperada, mas o prazo é curto.", respostas:[
+    { texto:"Me jogo na oportunidade sem pensar duas vezes",       tipo:"ata" },
+    { texto:"Avalio se ela pode prejudicar algo ou alguém",        tipo:"def" },
+    { texto:"Já estou reorganizando minha agenda mentalmente",     tipo:"vel" },
+    { texto:"Preciso entender melhor antes de me comprometer",     tipo:"int" },
+    { texto:"Se vale a pena, me adapto ao tempo disponível",       tipo:"est" },
+  ]},
+  { texto:"Você encontra uma máquina desconhecida em funcionamento.", respostas:[
+    { texto:"A curiosidade fala mais alto e preciso interagir",    tipo:"ata" },
+    { texto:"Me certifico de que ninguém vai se machucar",         tipo:"def" },
+    { texto:"Procuro outra forma de entender o que ela faz",       tipo:"vel" },
+    { texto:"Observo cada detalhe até compreender como funciona",  tipo:"int" },
+    { texto:"Fico observando por quanto tempo for necessário",      tipo:"est" },
+  ]},
+  { texto:"Uma antiga lenda chama sua atenção.", respostas:[
+    { texto:"Sinto um impulso de ir atrás da origem",              tipo:"ata" },
+    { texto:"Me interesso pelo impacto que ela tem nas pessoas",   tipo:"def" },
+    { texto:"Reúno referências de várias fontes rapidamente",      tipo:"vel" },
+    { texto:"Mergulho nos registros para entender o que há de verdade", tipo:"int" },
+    { texto:"Dedico o tempo necessário para descobrir cada detalhe",tipo:"est" },
+  ]},
+  { texto:"Você percebe que um plano que funcionava começou a falhar.", respostas:[
+    { texto:"Mudo de postura e parto para outra abordagem",        tipo:"ata" },
+    { texto:"Penso no impacto que a mudança pode causar nos outros",tipo:"def" },
+    { texto:"Já estou reformulando mentalmente as próximas etapas",tipo:"vel" },
+    { texto:"Quero entender onde o plano falhou antes de agir",    tipo:"int" },
+    { texto:"Sigo ajustando com calma até encontrar o equilíbrio", tipo:"est" },
+  ]},
+  { texto:"Alguém desafia sua forma de pensar publicamente.", respostas:[
+    { texto:"Respondo com convicção, sem hesitar",                 tipo:"ata" },
+    { texto:"Me preocupo com o clima do grupo mais do que ter razão", tipo:"def" },
+    { texto:"Redireciono a conversa para um terreno mais produtivo",tipo:"vel" },
+    { texto:"Ouço com atenção e reformulo meu ponto se necessário",tipo:"int" },
+    { texto:"Deixo a situação se desenvolver antes de me posicionar",tipo:"est" },
+  ]},
+  { texto:"Você encontra um quebra-cabeça que ninguém resolveu.", respostas:[
+    { texto:"Sinto que o desafio é feito para mim e entro de cabeça",tipo:"ata" },
+    { texto:"Convido outras pessoas para resolver junto",           tipo:"def" },
+    { texto:"Experimento abordagens diferentes até achar uma que funcione", tipo:"vel" },
+    { texto:"Analiso a lógica por trás antes de tentar qualquer peça", tipo:"int" },
+    { texto:"Não me importo com o tempo — sigo até resolver",      tipo:"est" },
+  ]},
+  { texto:"Você encontra uma torre abandonada.", respostas:[
+    { texto:"Entro sem pensar duas vezes — a curiosidade fala mais alto", tipo:"ata" },
+    { texto:"Verifico se é seguro antes de deixar qualquer um entrar", tipo:"def" },
+    { texto:"Exploro o entorno primeiro para entender o contexto", tipo:"vel" },
+    { texto:"Estudo a estrutura e a história antes de qualquer passo", tipo:"int" },
+    { texto:"Subo com calma, prestando atenção em cada detalhe",   tipo:"est" },
+  ]},
+  { texto:"Um projeto longo e desgastante está pela metade.", respostas:[
+    { texto:"Busco uma forma de acelerar e chegar logo ao resultado",tipo:"ata" },
+    { texto:"Me preocupo com o bem-estar da equipe antes de tudo", tipo:"def" },
+    { texto:"Reorganizo as etapas para ganhar mais eficiência",    tipo:"vel" },
+    { texto:"Revejo o planejamento inteiro para entender onde melhorar", tipo:"int" },
+    { texto:"Sigo no ritmo, porque sei que o esforço vai valer",   tipo:"est" },
+  ]},
+  { texto:"Você está diante de uma escolha difícil sem resposta certa.", respostas:[
+    { texto:"Confio no meu instinto e decido",                     tipo:"ata" },
+    { texto:"Penso em qual opção vai preservar mais as pessoas",    tipo:"def" },
+    { texto:"Busco uma terceira opção que ninguém considerou",      tipo:"vel" },
+    { texto:"Preciso de mais informações antes de qualquer decisão",tipo:"int" },
+    { texto:"Aceito que é difícil e carrego o peso com equilíbrio",tipo:"est" },
+  ]},
+  { texto:"Você recebe uma crítica dura sobre algo em que se dedicou.", respostas:[
+    { texto:"Reajo com força — não deixo passar sem responder",    tipo:"ata" },
+    { texto:"Me importo mais em preservar a relação do que me defender", tipo:"def" },
+    { texto:"Redireciono minha energia para melhorar o que foi apontado", tipo:"vel" },
+    { texto:"Analiso se a crítica tem fundamento antes de reagir", tipo:"int" },
+    { texto:"Absorvo com calma e sigo em frente sem carregar o peso",tipo:"est" },
+  ]},
+  { texto:"Uma jornada que parecia curta está se tornando muito longa.", respostas:[
+    { texto:"Procuro uma forma de encerrar isso logo",             tipo:"ata" },
+    { texto:"Me certifico de que todos ao redor estão bem",        tipo:"def" },
+    { texto:"Ajusto o plano para tornar o caminho mais eficiente", tipo:"vel" },
+    { texto:"Entendo o que prolongou a jornada para não repetir",  tipo:"int" },
+    { texto:"Encaro como parte do processo — o destino vale a pena",tipo:"est" },
+  ]},
+];
+
+function sortearQuiz() {
+  // Sorteia 5 perguntas aleatórias do banco de 20
+  const shuffled = [...QUIZ_BANCO].sort(()=>Math.random()-0.5);
+  const cinco = shuffled.slice(0,5);
+  // Embaralha as respostas de cada pergunta
+  return cinco.map(q=>({
+    ...q,
+    respostasOrdem: [...q.respostas].sort(()=>Math.random()-0.5),
+  }));
+}
+
+function calcPerfilBase(respostas) {
+  // respostas = array de {tipo:"ata"|"def"|"vel"|"int"|"est"}
+  const base = { ata:0, def:0, vel:0, int:0, est:0 };
+  respostas.forEach(r => {
+    const vals = PERFIL_VALS[r.tipo];
+    Object.keys(base).forEach(k => { base[k] += vals[k]; });
+  });
+  return base;
+}
+
+function sortearStats(perfilBase, cavaleiro) {
+  // Range normal: 70% a 100%
+  // Range com afinidade: 70% a 104.76%
+  const AFIN = {
+    seiya:  ["ata","vel"],
+    shiryu: ["def","est"],
+    hyoga:  ["int","vel"],
+    shun:   ["int","est"],
+    ikki:   ["ata","int"],
+  };
+  const afins = AFIN[cavaleiro] || [];
+  const stats = {};
+  ["ata","def","vel","int","est"].forEach(k => {
+    const maxPct = afins.includes(k) ? 1.0476 : 1.0;
+    const pct = 0.70 + Math.random() * (maxPct - 0.70);
+    stats[k] = Math.round(perfilBase[k] * pct);
+  });
+  return stats;
+}
+
+// ─── BATTLE SCREEN ────────────────────────────────────────────────────────────
+const BATTLE_CFG = {
+  cosmoBasico:30, cosmoDefBase:20, cosmoEsquiva:10, cosmoBloqueio:5,
+  cosmoCritCausado:15, cosmoCritRecebido:20,
+  unlockEspecial:200, unlockSupremo:500, unlockUltra:1000,
+  consumoEspecial:25, consumoSupremo:50, consumoUltra:100,
+  basicoPct:100, supremoPct:375, ultraPct:800,
+  ratqMin:10, ratqNormMax:100, ratqCritMax:150,
+  rdefMax:80, rvdMax:20, rintMin:5, rintMax:20,
+  debuffPorPilha:15, debuffDuracao:2,
+};
+
+const CHAR_AVATARS_B = {seiya:"🔥",shiryu:"🐉",hyoga:"❄️",shun:"🌿",ikki:"🦅"};
+
+function makeCombatantB(char, armorStats, charKey) {
+  const hp  = char.level*20 + (armorStats.total.def||0)*10 + (armorStats.total.est||0)*5;
+  const co  = char.level*10 + (armorStats.total.est||0)*3  + (armorStats.total.int||0)*2;
+  return {
+    name: char.name, charKey,
+    lv: char.level,
+    ata: armorStats.total.ata||char.ata||10,
+    def: armorStats.total.def||char.def||10,
+    vel: armorStats.total.vel||char.vel||10,
+    int: armorStats.total.int||char.int_stat||10,
+    est: armorStats.total.est||char.est||10,
+    hp, hpMax:hp, cosmo:0, cosmoMax:co,
+    defending:false, buffs:[], debuffsAtivos:[], ultraUsado:false,
+    atordoado:false, atordoadoTurnos:0,
+  };
+}
+
+function makeCPU(cavaleiro, level) {
+  const cav = CAVALEIROS[cavaleiro]||CAVALEIROS.seiya;
+  const base = 10 + level*2;
+  const ata = base + (cav.atributos.includes("ata")?10:0);
+  const def = base + (cav.atributos.includes("def")?10:0);
+  const vel = base + (cav.atributos.includes("vel")?10:0);
+  const int_ = base + (cav.atributos.includes("int")?10:0);
+  const est = base + (cav.atributos.includes("est")?10:0);
+  const hp = level*20 + def*10 + est*5;
+  const co = level*10 + est*3  + int_*2;
+  return {name:cav.nome, charKey:cavaleiro, lv:level, ata, def, vel, int:int_, est, hp, hpMax:hp, cosmo:0, cosmoMax:co, defending:false, buffs:[], debuffsAtivos:[], ultraUsado:false, atordoado:false, atordoadoTurnos:0};
+}
+
+function rndB(a,b){ return a+Math.random()*(b-a); }
+
+function resolveHitB(atk, def, pctBase) {
+  const ata = atk.ata;
+  const rAtq = Math.max(1, Math.round(ata * rndB(BATTLE_CFG.ratqMin, BATTLE_CFG.ratqNormMax)/100 * (pctBase/100)));
+  const rVel = Math.round(def.vel * rndB(0, BATTLE_CFG.rvdMax)/100);
+  if(rVel > rAtq) return {out:"DODGED",dmg:0,rAtq,rVel};
+  const defStat = def.defending ? Math.round(def.def*1.5) : def.def;
+  const rDef = Math.round(defStat * rndB(0, BATTLE_CFG.rdefMax)/100);
+  const net = rAtq - rDef;
+  if(net <= 0) return {out:"BLOCKED",dmg:0,rAtq,rDef};
+  const rInt = Math.round(atk.int * rndB(BATTLE_CFG.rintMin, BATTLE_CFG.rintMax)/100);
+  const rDC  = Math.round(defStat * rndB(0, BATTLE_CFG.rdefMax)/100);
+  if(rInt > rDC) {
+    const rCrit = Math.max(1, Math.round(ata * rndB(BATTLE_CFG.ratqNormMax+1, BATTLE_CFG.ratqCritMax)/100));
+    return {out:"CRIT", dmg:Math.max(0,rCrit-rDef), rAtq, rDef};
+  }
+  return {out:"HIT", dmg:Math.max(0,net), rAtq, rDef};
+}
+
+function BattleScreen({ activeChar, armorStats }) {
+  const [cpuChar, setCpuChar]   = useState("shiryu");
+  const [cpuLevel,setCpuLevel]  = useState(activeChar.level||1);
+  const [phase,   setPhase]     = useState("lobby"); // lobby | battle | over
+  const [bs,      setBs]        = useState(null);
+  const [log,     setLog]       = useState([]);
+  const [winner,  setWinner]    = useState(null);
+
+  const addLog = (msg, type="sys") => setLog(prev=>[...prev, {msg,type,id:Date.now()+Math.random()}]);
+
+  const startBattle = () => {
+    const p1 = makeCombatantB(activeChar, armorStats, activeChar.cavaleiro||"seiya");
+    const p2 = makeCPU(cpuChar, cpuLevel);
+    setBs({p1, p2, turn:1});
+    setLog([{msg:`⚔️ Batalha! ${p1.name} vs ${p2.name}`, type:"sys", id:1}]);
+    setPhase("battle");
+    setWinner(null);
+  };
+
+  const doAction = (type) => {
+    if (!bs || phase!=="battle") return;
+    const next = JSON.parse(JSON.stringify(bs));
+    const atk = next.p1, def = next.p2;
+    atk.defending = false;
+    let msg = "";
+
+    if (type==="basico") {
+      const r = resolveHitB(atk, def, 100);
+      if(r.out==="DODGED") msg = `💨 ${def.name} esquivou!`;
+      else if(r.out==="BLOCKED") msg = `🛡 ${def.name} bloqueou!`;
+      else if(r.out==="CRIT") { msg = `⭐ CRÍTICO! ${atk.name} → ${r.dmg} dano!`; }
+      else msg = `⚔️ ${atk.name} → ${r.dmg} dano`;
+      def.hp = Math.max(0, def.hp - r.dmg);
+      atk.cosmo = Math.min(atk.cosmoMax, atk.cosmo + BATTLE_CFG.cosmoBasico);
+    } else if (type==="defender") {
+      atk.defending = true;
+      atk.cosmo = Math.min(atk.cosmoMax, atk.cosmo + BATTLE_CFG.cosmoDefBase);
+      msg = `🛡 ${atk.name} adota postura defensiva (+${BATTLE_CFG.cosmoDefBase} Cosmo)`;
+    } else if (type==="especial") {
+      if(atk.cosmoMax < BATTLE_CFG.unlockEspecial) { addLog(`⚠ Cosmo Máx precisa ser ≥ ${BATTLE_CFG.unlockEspecial}`); return; }
+      const consumo = Math.round(atk.cosmo * BATTLE_CFG.consumoEspecial/100);
+      atk.cosmo = Math.max(0, atk.cosmo - consumo);
+      const r = resolveHitB(atk, def, 200);
+      def.hp = Math.max(0, def.hp - r.dmg);
+      msg = `💥 Especial! ${atk.name} → ${r.dmg} dano (consumiu ${consumo} Cosmo)`;
+    } else if (type==="supremo") {
+      if(atk.cosmoMax < BATTLE_CFG.unlockSupremo) { addLog(`⚠ Cosmo Máx precisa ser ≥ ${BATTLE_CFG.unlockSupremo}`); return; }
+      const consumo = Math.round(atk.cosmo * BATTLE_CFG.consumoSupremo/100);
+      atk.cosmo = Math.max(0, atk.cosmo - consumo);
+      const r = resolveHitB(atk, def, 375);
+      def.hp = Math.max(0, def.hp - r.dmg);
+      msg = `🔥 Supremo! ${atk.name} → ${r.dmg} dano (consumiu ${consumo} Cosmo)`;
+    } else if (type==="ultra") {
+      if(atk.ultraUsado) { addLog("⚠ Ultra já usado!"); return; }
+      if(atk.cosmoMax < BATTLE_CFG.unlockUltra) { addLog(`⚠ Cosmo Máx precisa ser ≥ ${BATTLE_CFG.unlockUltra}`); return; }
+      const consumo = Math.round(atk.cosmo * BATTLE_CFG.consumoUltra/100);
+      atk.cosmo = Math.max(0, atk.cosmo - consumo);
+      atk.ultraUsado = true;
+      const r = resolveHitB(atk, def, 800);
+      def.hp = Math.max(0, def.hp - r.dmg);
+      msg = `🌟 ULTRA! ${atk.name} → ${r.dmg} dano (consumiu ${consumo} Cosmo)`;
+    }
+
+    addLog(msg, type==="basico"?"p1":type==="defender"?"sys":"crit");
+
+    if (def.hp <= 0) { setBs(next); setPhase("over"); setWinner("p1"); return; }
+
+    // CPU age automaticamente
+    const cpu = next.p2, player = next.p1;
+    cpu.defending = false;
+    const chance = Math.random();
+    let cpuType = "basico";
+    if(chance < 0.2 && cpu.cosmoMax >= BATTLE_CFG.unlockEspecial) cpuType = "especial";
+    else if(chance < 0.05 && cpu.cosmoMax >= BATTLE_CFG.unlockSupremo) cpuType = "supremo";
+
+    const pctCPU = cpuType==="basico"?100:cpuType==="especial"?200:375;
+    if(cpuType!=="basico") {
+      const cons = Math.round(cpu.cosmo*(cpuType==="especial"?BATTLE_CFG.consumoEspecial:BATTLE_CFG.consumoSupremo)/100);
+      cpu.cosmo = Math.max(0, cpu.cosmo - cons);
+    }
+    const rc = resolveHitB(cpu, player, pctCPU);
+    player.hp = Math.max(0, player.hp - rc.dmg);
+    cpu.cosmo = Math.min(cpu.cosmoMax, cpu.cosmo + BATTLE_CFG.cosmoBasico);
+
+    const cpuMsg = rc.out==="DODGED"?`💨 ${player.name} esquivou do CPU!`:
+      rc.out==="BLOCKED"?`🛡 ${player.name} bloqueou o CPU!`:
+      rc.out==="CRIT"?`⭐ CPU CRÍTICO! → ${rc.dmg} dano!`:
+      `🤖 CPU → ${rc.dmg} dano`;
+    addLog(cpuMsg, "p2");
+
+    next.turn++;
+    setBs(next);
+
+    if(player.hp <= 0) { setPhase("over"); setWinner("p2"); }
+  };
+
+  // ── LOBBY ──
+  if (phase==="lobby") return (
+    <div>
+      <div style={{fontSize:13,fontWeight:700,color:"#ffd700",marginBottom:12}}>⚔️ Batalha</div>
+      <div style={{background:"#0d0d1e",borderRadius:12,padding:12,marginBottom:10,border:`1px solid ${CAVALEIROS[activeChar.cavaleiro||"seiya"]?.cor||"#ffd700"}44`}}>
+        <div style={{fontSize:10,color:"#555",marginBottom:6}}>P1 — Seu Personagem</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:28}}>{CHAR_AVATARS_B[activeChar.cavaleiro||"seiya"]}</span>
+          <div>
+            <div style={{fontSize:13,fontWeight:800,color:"#dde"}}>{activeChar.name}</div>
+            <div style={{fontSize:10,color:"#555"}}>Lv{activeChar.level} · HP:{activeChar.level*20+(armorStats.total.def||0)*10+(armorStats.total.est||0)*5}</div>
+            <div style={{display:"flex",gap:8,marginTop:2}}>
+              {["ata","def","vel"].map(k=>(<span key={k} style={{fontSize:9,color:"#888"}}>{k.toUpperCase()}:{armorStats.total[k]||0}</span>))}
+            </div>
+          </div>
+        </div>
       </div>
+      <div style={{textAlign:"center",fontSize:18,fontWeight:900,color:"#ffd700",marginBottom:10}}>VS</div>
+      <div style={{background:"#1e0d0d",borderRadius:12,padding:12,marginBottom:12,border:"1px solid #8B302055"}}>
+        <div style={{fontSize:10,color:"#f87171",marginBottom:6}}>CPU — Adversário</div>
+        <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+          {Object.entries(CAVALEIROS).map(([k,c])=>(
+            <button key={k} onClick={()=>setCpuChar(k)}
+              style={{padding:"4px 8px",borderRadius:8,border:`1px solid ${cpuChar===k?c.cor:"#333"}`,cursor:"pointer",background:cpuChar===k?`${c.cor}22`:"transparent",color:cpuChar===k?c.cor:"#555",fontSize:10}}>
+              {c.icon} {c.nome.split(" ")[0]}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:28}}>{CHAR_AVATARS_B[cpuChar]}</span>
+          <div>
+            <div style={{fontSize:13,fontWeight:800,color:"#f87171"}}>{CAVALEIROS[cpuChar]?.nome} (CPU)</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+              <span style={{fontSize:10,color:"#555"}}>Nível:</span>
+              <button onClick={()=>setCpuLevel(Math.max(1,cpuLevel-1))} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#ffffff10",color:"#aaa",cursor:"pointer",fontSize:12}}>-</button>
+              <span style={{fontSize:14,fontWeight:700,color:"#f87171",minWidth:24,textAlign:"center"}}>{cpuLevel}</span>
+              <button onClick={()=>setCpuLevel(cpuLevel+1)} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#ffffff10",color:"#aaa",cursor:"pointer",fontSize:12}}>+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button onClick={startBattle}
+        style={{width:"100%",padding:14,borderRadius:14,border:"none",cursor:"pointer",
+          background:"linear-gradient(135deg,#6B1A00,#CC2200)",color:"#fff",
+          fontSize:14,fontWeight:800,letterSpacing:1,
+          boxShadow:"0 0 20px rgba(200,40,0,.4)"}}>
+        ⚔️ INICIAR BATALHA
+      </button>
     </div>
   );
 
-  return (
-    <div>
-      {/* Widget de XP do Guerreiro */}
-      <WarriorXPWidget user={user}/>
+  // ── BATALHA ──
+  if (phase==="battle" && bs) {
+    const {p1,p2,turn} = bs;
+    const pct = (cur,max) => Math.max(0,Math.min(100,cur/max*100));
+    const hpColor = (p) => p.hp/p.hpMax < 0.15 ? "#E06060" : p.hp/p.hpMax < 0.3 ? "#E0A020" : "#4EE880";
+    return (
+      <div style={{display:"flex",flexDirection:"column",minHeight:0,height:"100%"}}>
+        {/* Combatentes */}
+        <div style={{flexShrink:0,display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:6,padding:"4px 0 6px",borderBottom:"1px solid #7A602020",marginBottom:6}}>
+          <div>
+            <div style={{fontSize:10,color:"#90B8F0",fontWeight:700,marginBottom:3}}>{p1.name}</div>
+            <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:3}}>
+              <span style={{fontSize:7,color:"#555",width:12}}>HP</span>
+              <div style={{flex:1,background:"rgba(255,255,255,.05)",borderRadius:4,height:7,overflow:"hidden"}}>
+                <div style={{width:`${pct(p1.hp,p1.hpMax)}%`,height:"100%",background:hpColor(p1),borderRadius:4,transition:"width .4s"}}/>
+              </div>
+              <span style={{fontSize:8,color:"#aaa",whiteSpace:"nowrap",minWidth:48}}>{Math.round(p1.hp)}/{p1.hpMax}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:3}}>
+              <span style={{fontSize:7,color:"#534AB7",width:12}}>CO</span>
+              <div style={{flex:1,background:"rgba(255,255,255,.05)",borderRadius:4,height:5,overflow:"hidden"}}>
+                <div style={{width:`${pct(p1.cosmo,p1.cosmoMax)}%`,height:"100%",background:"linear-gradient(90deg,#534AB7,#7B74E0)",borderRadius:4,transition:"width .4s"}}/>
+              </div>
+              <span style={{fontSize:8,color:"#534AB7",whiteSpace:"nowrap",minWidth:48}}>{Math.round(p1.cosmo)}/{p1.cosmoMax}</span>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",fontSize:12,color:"#ffd700",fontWeight:900}}>VS</div>
+          <div>
+            <div style={{fontSize:10,color:"#F09090",fontWeight:700,marginBottom:3,textAlign:"right"}}>{p2.name}</div>
+            <div style={{display:"flex",alignItems:"center",gap:3,flexDirection:"row-reverse",marginBottom:3}}>
+              <span style={{fontSize:7,color:"#555",width:12}}>HP</span>
+              <div style={{flex:1,background:"rgba(255,255,255,.05)",borderRadius:4,height:7,overflow:"hidden"}}>
+                <div style={{width:`${pct(p2.hp,p2.hpMax)}%`,height:"100%",background:hpColor(p2),borderRadius:4,transition:"width .4s"}}/>
+              </div>
+              <span style={{fontSize:8,color:"#aaa",whiteSpace:"nowrap",minWidth:48,textAlign:"right"}}>{Math.round(p2.hp)}/{p2.hpMax}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:3,flexDirection:"row-reverse"}}>
+              <span style={{fontSize:7,color:"#534AB7",width:12}}>CO</span>
+              <div style={{flex:1,background:"rgba(255,255,255,.05)",borderRadius:4,height:5,overflow:"hidden"}}>
+                <div style={{width:`${pct(p2.cosmo,p2.cosmoMax)}%`,height:"100%",background:"linear-gradient(90deg,#534AB7,#7B74E0)",borderRadius:4,transition:"width .4s"}}/>
+              </div>
+              <span style={{fontSize:8,color:"#534AB7",whiteSpace:"nowrap",minWidth:48,textAlign:"right"}}>{Math.round(p2.cosmo)}/{p2.cosmoMax}</span>
+            </div>
+          </div>
+        </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 80px 1fr",gap:8,alignItems:"start"}}>
-        {/* Esquerda */}
-        <div>{leftSlots.map(s=><Slot key={s.id} slot={s}/>)}</div>
+        <div style={{flexShrink:0,textAlign:"center",fontSize:9,color:"#555",marginBottom:4}}>Turno {turn} — Sua ação</div>
 
-        {/* Centro — silhueta */}
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-          <svg width="70" height="160" viewBox="0 0 70 160">
-            <ellipse cx="35" cy="18" rx="12" ry="14" fill="#1a1a2e" stroke="#ffd70033" strokeWidth="1"/>
-            <rect x="20" y="30" width="30" height="40" rx="4" fill="#0d0d2e" stroke="#ffd70033" strokeWidth="1"/>
-            <rect x="8"  y="32" width="11" height="32" rx="4" fill="#0d0d2e" stroke="#ffd70033" strokeWidth="1"/>
-            <rect x="51" y="32" width="11" height="32" rx="4" fill="#0d0d2e" stroke="#ffd70033" strokeWidth="1"/>
-            <rect x="18" y="68" width="34" height="10" rx="3" fill="#1a1a2e" stroke="#ffd70033" strokeWidth="1"/>
-            <rect x="18" y="76" width="15" height="45" rx="4" fill="#0d0d2e" stroke="#ffd70033" strokeWidth="1"/>
-            <rect x="37" y="76" width="15" height="45" rx="4" fill="#0d0d2e" stroke="#ffd70033" strokeWidth="1"/>
-            <ellipse cx="25" cy="124" rx="9" ry="5" fill="#1a1a2e" stroke="#ffd70033" strokeWidth="1"/>
-            <ellipse cx="45" cy="124" rx="9" ry="5" fill="#1a1a2e" stroke="#ffd70033" strokeWidth="1"/>
-            {/* Peito equipado */}
-            <rect x="20" y="30" width="30" height="40" rx="4" fill="#ffd70011" stroke="#ffd70066" strokeWidth="1"/>
-            <text x="35" y="55" textAnchor="middle" fontSize="14">🛡️</text>
-          </svg>
-
-          {/* Stats */}
-          {[
-            {ic:"⚔️",l:"ATK",v:10+(user?.level||1)*5},
-            {ic:"🛡️",l:"DEF",v:8+(user?.level||1)*4},
-            {ic:"⚡",l:"VEL",v:12+(user?.level||1)*3},
-            {ic:"💫",l:"KI", v:5+(user?.level||1)*8},
-          ].map(s=>(
-            <div key={s.l} style={{textAlign:"center",background:"#ffffff06",
-              borderRadius:6,padding:"4px 6px",width:"100%"}}>
-              <div style={{fontSize:12}}>{s.ic}</div>
-              <div style={{fontSize:12,fontWeight:900,color:"#dde"}}>{s.v}</div>
-              <div style={{fontSize:8,color:"#555"}}>{s.l}</div>
+        {/* Log — cresce */}
+        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:3,marginBottom:6,minHeight:80}}>
+          {log.slice(-14).map(l=>(
+            <div key={l.id} style={{fontSize:10,padding:"3px 8px",borderRadius:8,maxWidth:"96%",
+              background:l.type==="p1"?"rgba(40,80,160,.18)":l.type==="p2"?"rgba(160,40,40,.18)":l.type==="crit"?"rgba(200,160,20,.18)":"rgba(100,80,20,.1)",
+              border:`1px solid ${l.type==="p1"?"rgba(40,80,160,.28)":l.type==="p2"?"rgba(160,40,40,.28)":l.type==="crit"?"rgba(200,160,20,.38)":"rgba(100,80,20,.18)"}`,
+              color:l.type==="p1"?"#90B8F0":l.type==="p2"?"#F09090":l.type==="crit"?"#F0D080":"#666",
+              alignSelf:l.type==="p2"?"flex-end":l.type==="sys"?"center":"flex-start"}}>
+              {l.msg}
             </div>
           ))}
         </div>
 
-        {/* Direita */}
-        <div>{rightSlots.map(s=><Slot key={s.id} slot={s}/>)}</div>
+        {/* Ações FIXAS no bottom */}
+        <div style={{flexShrink:0,borderTop:"1px solid #7A6020",paddingTop:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}}>
+            <button onClick={()=>doAction("basico")} style={{padding:"10px 4px",borderRadius:9,border:"1px solid #4EE880",cursor:"pointer",background:"transparent",color:"#4EE880",fontSize:12,fontWeight:700}}>⚔️ Básico</button>
+            <button onClick={()=>doAction("defender")} style={{padding:"10px 4px",borderRadius:9,border:"1px solid #90C890",cursor:"pointer",background:"transparent",color:"#90C890",fontSize:12,fontWeight:700}}>🛡️ Defender</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
+            <button onClick={()=>doAction("especial")} disabled={p1.cosmoMax<BATTLE_CFG.unlockEspecial} style={{padding:"9px 3px",borderRadius:9,border:"1px solid #7B74E0",cursor:"pointer",background:"transparent",color:"#7B74E0",fontSize:11,fontWeight:700,opacity:p1.cosmoMax<BATTLE_CFG.unlockEspecial?0.3:1}}>💥 Especial</button>
+            <button onClick={()=>doAction("supremo")} disabled={p1.cosmoMax<BATTLE_CFG.unlockSupremo} style={{padding:"9px 3px",borderRadius:9,border:"1px solid #E06060",cursor:"pointer",background:"transparent",color:"#E06060",fontSize:11,fontWeight:700,opacity:p1.cosmoMax<BATTLE_CFG.unlockSupremo?0.3:1}}>🔥 Supremo</button>
+            <button onClick={()=>doAction("ultra")} disabled={p1.cosmoMax<BATTLE_CFG.unlockUltra||p1.ultraUsado} style={{padding:"9px 3px",borderRadius:9,border:"1px solid #F0D080",cursor:"pointer",background:"rgba(240,208,128,.05)",color:"#F0D080",fontSize:11,fontWeight:700,opacity:(p1.cosmoMax<BATTLE_CFG.unlockUltra||p1.ultraUsado)?0.3:1}}>🌟 Ultra</button>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <button onClick={()=>{setPhase("lobby");setBs(null);setLog([]);}} style={{background:"transparent",border:"1px solid #333",borderRadius:8,padding:"4px 12px",color:"#555",cursor:"pointer",fontSize:10}}>↩ Abandonar</button>
+          </div>
+        </div>
       </div>
+    );
+  }
 
-      <div style={{textAlign:"center",marginTop:16,fontSize:11,color:"#444",
-        background:"#ffffff06",borderRadius:10,padding:12}}>
-        🔒 Desbloqueie itens com créditos para equipar seu guerreiro!
-        <br/>
-        <span style={{color:"#ffd700",fontWeight:700}}>{user?.credits||0} créditos disponíveis</span>
+  // ── RESULTADO ──
+  if (phase==="over") return (
+    <div style={{textAlign:"center",padding:"20px 0"}}>
+      <div style={{fontSize:48,marginBottom:12}}>{winner==="p1"?"🏆":"💀"}</div>
+      <div style={{fontSize:20,fontWeight:900,color:winner==="p1"?"#F0D080":"#E06060",marginBottom:8}}>
+        {winner==="p1"?"VITÓRIA!":"DERROTA"}
+      </div>
+      <div style={{fontSize:12,color:"#555",marginBottom:20}}>
+        {winner==="p1"?`${bs?.p1?.name} venceu em ${bs?.turn} turnos!`:`Derrota no turno ${bs?.turn}.`}
+      </div>
+      <button onClick={()=>{setPhase("lobby");setBs(null);setLog([]);setWinner(null);}}
+        style={{padding:"12px 24px",borderRadius:12,border:"none",cursor:"pointer",background:"linear-gradient(135deg,#6B1A00,#CC2200)",color:"#fff",fontSize:13,fontWeight:800}}>
+        ↩ Voltar ao Lobby
+      </button>
+    </div>
+  );
+
+  return null;
+}
+
+// Botão com hold — segurar incrementa continuamente
+function HoldBtn({onAction, children, disabled, style}) {
+  const intervalRef = useRef(null);
+  const startHold = () => {
+    onAction();
+    intervalRef.current = setInterval(onAction, 120);
+  };
+  const stopHold = () => {
+    if(intervalRef.current){ clearInterval(intervalRef.current); intervalRef.current=null; }
+  };
+  return (
+    <button
+      onMouseDown={disabled?undefined:startHold}
+      onMouseUp={stopHold} onMouseLeave={stopHold}
+      onTouchStart={disabled?undefined:(e)=>{e.preventDefault();startHold();}}
+      onTouchEnd={stopHold}
+      disabled={disabled}
+      style={{...style,userSelect:"none",WebkitUserSelect:"none"}}>
+      {children}
+    </button>
+  );
+}
+
+// Admin inline dentro do personagem
+function GameAdminInline({ charId, onUpdate }) {
+  const [lv,  setLv]  = useState(1);
+  const [msg, setMsg] = useState("");
+  const ok = (m) => { setMsg(m); setTimeout(()=>setMsg(""),3000); onUpdate(); };
+
+  return (
+    <div style={{background:"#07070f",borderRadius:10,padding:12,marginBottom:10,border:"1px solid #ffd70022"}}>
+      <div style={{fontSize:11,color:"#ffd700",fontWeight:700,marginBottom:10}}>⚙️ Admin</div>
+      {msg && <div style={{fontSize:10,color:"#22c55e",marginBottom:8}}>{msg}</div>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+        {/* Setar Level — dá 5 pts por level */}
+        <div style={{background:"#0d0d1e",borderRadius:8,padding:8,gridColumn:"1/-1"}}>
+          <div style={{fontSize:9,color:"#555",marginBottom:4}}>
+            Setar Level <span style={{color:"#ffd70066"}}>(+5 pts por level subido)</span>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <input type="number" value={lv} min={1} max={999} onChange={e=>setLv(parseInt(e.target.value)||1)}
+              style={{flex:1,padding:"4px 6px",borderRadius:5,background:"#ffffff08",border:"1px solid #ffffff15",color:"#dde",fontSize:11}}/>
+            <button onClick={async()=>{
+              const r=await api.put(`/game/characters/${charId}/level`,{level:lv}).catch(()=>null);
+              ok(r?.level?`✅ Lv${r.level} — ${r.pontos_livres||0} pts livres`:"✅ Level setado");
+            }}
+              style={{padding:"5px 14px",borderRadius:5,border:"none",cursor:"pointer",background:"#ffd70022",color:"#ffd700",fontSize:10,fontWeight:700}}>
+              Lv{lv}
+            </button>
+          </div>
+        </div>
+        {/* Bag teste */}
+        <div style={{background:"#0d0d1e",borderRadius:8,padding:8,gridColumn:"1/-1"}}>
+          <button onClick={async()=>{
+            for(const k of ["helm","armor","belt","gauntlets","leggings","boots"])
+              for(let l=1;l<=7;l++) await api.post(`/game/inventory/${charId}`,{item_type:"armor",item_key:k,level:l,quantity:5}).catch(()=>{});
+            ok("✅ Bag populada!");
+          }}
+            style={{width:"100%",padding:"6px",borderRadius:5,border:"none",cursor:"pointer",background:"#22c55e22",color:"#22c55e",fontSize:10,fontWeight:700}}>
+            🎒 Popular Bag (lv1-7)
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
+// ─── GAME TAB ─────────────────────────────────────────────────────────────────
+function WarriorTab({ user }) {
+  const INIT = { step:1, cavaleiro:"", nome:"", quiz:[], quizIdx:0, respostasEscolhidas:[], perfilBase:null, stats:null };
+  const [chars,      setChars]      = useState(null);
+  const [view,       setView]       = useState("list");
+  const [activeChar, setActiveChar] = useState(null);
+  const [gameTab,    setGameTab]    = useState("warrior");
+  const [warriorTab, setWarriorTab] = useState("status");
+  const [selectedArmorSlot, setSelectedArmorSlot] = useState(null);
+  const [armorModal,  setArmorModal]  = useState(null); // {slot, mode:"equip"|"detail"}
+  const [inventory,  setInventory]  = useState([]);
+  const [creating,   setCreating]   = useState(INIT);
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [delStep,    setDelStep]    = useState(0);
+  const [saving,     setSaving]     = useState(false);
+  const [bagLoading, setBagLoading] = useState(false);
+  // Bag filters
+  const [bagTab,    setBagTab]    = useState("all");
+  const [bagView,   setBagView]   = useState("mosaic");
+  const [bagSort,   setBagSort]   = useState("lv_desc");
+  const [tooltipStat, setTooltipStat] = useState(null);
+  const [bagItemModal, setBagItemModal] = useState(null);
+  const [distribPts, setDistribPts] = useState({}); // {ata:0,def:0,...} pontos a distribuir
+  const [savingPts,  setSavingPts]  = useState(false);
+  const [distribSkills, setDistribSkills] = useState({}); // {atk:0,def:0,luck:0}
+  const [savingSkills,  setSavingSkills]  = useState(false);
+  const [gameAdmin,  setGameAdmin]  = useState(false); // painel admin inline
+
+  useEffect(()=>{ if(user?.id) loadChars(); },[user?.id]);
+
+  const loadChars = async (tentativa=1) => {
+    setChars(null);
+    const d = await api.get("/game/characters").catch(e=>{console.error("loadChars erro:",e);return null;});
+    console.log("loadChars resposta:", d, "tentativa:", tentativa);
+    if (Array.isArray(d)) {
+      setChars(d);
+    } else if (tentativa < 3) {
+      setTimeout(()=>loadChars(tentativa+1), 3000);
+    } else {
+      setChars([]);
+    }
+  };
+
+  const loadInventory = async (charId) => {
+    const d = await api.get(`/game/inventory/${charId}`).catch(()=>null);
+    const inv = Array.isArray(d) ? d : [];
+    setInventory(inv);
+    return inv;
+  };
+
+  const openChar = async (c) => {
+    setActiveChar(c);
+    setView("play");
+    setGameTab("warrior");
+    setWarriorTab("status");
+    setArmorModal(null);
+    const inv = await loadInventory(c.id);
+    // Popula bag com 1 de cada peça se ainda não tiver nenhuma (para teste)
+    const hasArmor = inv.some(i=>i.item_type==="armor"&&i.quantity>0);
+    if (!hasArmor) {
+      for (const key of ["helm","armor","belt","gauntlets","leggings","boots"]) {
+        await api.post(`/game/inventory/${c.id}`,{item_type:"armor",item_key:key,level:1,quantity:1}).catch(()=>{});
+      }
+      await loadInventory(c.id);
+    }
+  };
+
+  const startCreate = () => {
+    const quiz = sortearQuiz();
+    setCreating({...INIT, quiz, step:1});
+    setView("create");
+  };
+
+  const reroll = () => {
+    // Refaz só os percentuais — mantém perfilBase e cavaleiro
+    const { perfilBase, cavaleiro } = creating;
+    if (!perfilBase || !cavaleiro) return;
+    const stats = sortearStats(perfilBase, cavaleiro);
+    setCreating({...creating, stats});
+  };
+
+  const refazer = () => {
+    // Recomeça do zero
+    const quiz = sortearQuiz();
+    setCreating({...INIT, quiz, step:1});
+  };
+
+  const answerQuiz = (resposta) => {
+    // resposta = {texto, tipo}
+    const newRespostas = [...creating.respostasEscolhidas, resposta];
+    const nextIdx = creating.quizIdx + 1;
+    if (nextIdx >= creating.quiz.length) {
+      // Fim do quiz — calcula perfil base e vai para escolha de afinidade
+      const perfilBase = calcPerfilBase(newRespostas);
+      setCreating({...creating, respostasEscolhidas:newRespostas, perfilBase, step:3});
+    } else {
+      setCreating({...creating, respostasEscolhidas:newRespostas, quizIdx:nextIdx});
+    }
+  };
+
+  const saveChar = async () => {
+    const { cavaleiro, nome, stats } = creating;
+    if (!cavaleiro || !nome || !stats) return;
+    setSaving(true);
+    const d = await api.post("/game/characters", {
+      name:nome, cavaleiro, perfil:"neutro",
+      ata:stats.ata, def:stats.def, vel:stats.vel, int_stat:stats.int, est:stats.est, pontos_livres:0,
+    }).catch(()=>null);
+    setSaving(false);
+    if (d?.id) {
+      await loadChars();
+      setCreating(INIT);
+      await openChar(d);
+    } else {
+      alert(d?.error || "Erro ao criar personagem. Verifique se atingiu o limite de 5.");
+    }
+  };
+
+  const deleteChar = async (id) => {
+    await api.delete(`/game/characters/${id}`).catch(()=>{});
+    setDelConfirm(null); setDelStep(0);
+    if (activeChar?.id===id) { setActiveChar(null); setView("list"); }
+    await loadChars();
+  };
+
+  const savePoints = async () => {
+    const total = Object.values(distribPts).reduce((a,b)=>a+b,0);
+    if (total===0 || total > (activeChar.pontos_livres||0)) return;
+    setSavingPts(true);
+    const newStats = {
+      ata: (activeChar.ata||0) + (distribPts.ata||0),
+      def: (activeChar.def||0) + (distribPts.def||0),
+      vel: (activeChar.vel||0) + (distribPts.vel||0),
+      int_stat: (activeChar.int_stat||0) + (distribPts.int||0),
+      est: (activeChar.est||0) + (distribPts.est||0),
+      pontos_livres: (activeChar.pontos_livres||0) - total,
+    };
+    const r = await api.put(`/game/characters/${activeChar.id}/stats`, newStats).catch(()=>null);
+    if (r?.id) {
+      setActiveChar({...activeChar, ...r});
+      setDistribPts({});
+    }
+    setSavingPts(false);
+  };
+
+  const saveSkills = async () => {
+    const total = Object.values(distribSkills).reduce((a,b)=>a+b,0);
+    if (total===0 || total > (activeChar.skill_points_livres||0)) return;
+    setSavingSkills(true);
+    const newSkills = {
+      skill_atk:  Math.min(100,(activeChar.skill_atk||0)  + (distribSkills.atk||0)),
+      skill_def:  Math.min(100,(activeChar.skill_def||0)  + (distribSkills.def||0)),
+      skill_luck: Math.min(100,(activeChar.skill_luck||0) + (distribSkills.luck||0)),
+      skill_points_livres: (activeChar.skill_points_livres||0) - total,
+    };
+    const r = await api.put(`/game/characters/${activeChar.id}/skills`, newSkills).catch(()=>null);
+    if (r?.id) {
+      setActiveChar({...activeChar, ...r});
+      setDistribSkills({});
+    }
+    setSavingSkills(false);
+  };
+
+  const equipSlot = async (slotKey, level) => {
+    if (!activeChar) return;
+    const newSlots = {...(activeChar.slots||{}), [slotKey]: {level}};
+    const updated = await api.put(`/game/characters/${activeChar.id}/equip`, {slots:newSlots}).catch(()=>null);
+    if (updated?.id) { setActiveChar(updated); }
+  };
+
+  const unequipSlot = async (slotKey) => {
+    if (!activeChar) return;
+    const newSlots = {...(activeChar.slots||{})};
+    delete newSlots[slotKey];
+    const updated = await api.put(`/game/characters/${activeChar.id}/equip`, {slots:newSlots}).catch(()=>null);
+    if (updated?.id) { setActiveChar(updated); }
+  };
+
+  const startFuse = async (itemKey, fromLevel) => {
+    if (!activeChar) return;
+    const cfg = FUSE_CFG[fromLevel-1];
+    const endsAt = Date.now() + cfg.time_s * 1000;
+    setFuseActive({key:itemKey, from:fromLevel, to:fromLevel+1, endsAt, total:cfg.time_s*1000});
+    const r = await api.post(`/game/inventory/${activeChar.id}/fuse`, {item_key:itemKey, from_level:fromLevel}).catch(()=>null);
+    if (r?.to_level) {
+      setTimeout(async ()=>{
+        setFuseActive(null);
+        await loadInventory(activeChar.id);
+      }, cfg.time_s * 1000);
+    } else {
+      setFuseActive(null);
+    }
+  };
+
+  const getInvItem = (key, lv) => inventory.find(i=>i.item_key===key && i.level===lv && i.quantity>0);
+  const getInvItems = (key) => inventory.filter(i=>i.item_key===key && i.quantity>0);
+  const getGems = () => inventory.filter(i=>i.item_type==="gem" && i.quantity>0);
+
+  // ── LISTA ──────────────────────────────────────────────────────────────────
+  if (view==="list") {
+    if (chars===null) return (
+      <div style={{padding:20,textAlign:"center",color:"#555"}}>
+        <div style={{fontSize:24,marginBottom:8}}>⏳</div>
+        <div style={{fontSize:12,marginBottom:12}}>Carregando personagens...</div>
+        <div style={{fontSize:10,color:"#444",marginBottom:12}}>O servidor pode estar acordando, aguarde...</div>
+        <button onClick={loadChars}
+          style={{background:"#ffffff10",border:"1px solid #ffffff20",borderRadius:8,padding:"6px 14px",color:"#888",cursor:"pointer",fontSize:11}}>
+          🔄 Tentar novamente
+        </button>
+      </div>
+    );
+    return (
+      <div>
+        <div style={{fontSize:13,fontWeight:800,color:"#ffd700",marginBottom:4}}>🎮 Game — Meus Guerreiros</div>
+        <div style={{fontSize:11,color:"#555",marginBottom:16}}>Até 5 personagens por conta</div>
+        {chars.map(c=>{
+          const cav=CAVALEIROS[c.cavaleiro]||{};
+          const perf=PERFIS[c.perfil]||{};
+          const isDeleting=delConfirm===c.id;
+          return (
+            <div key={c.id} style={{background:"#0d0d1e",borderRadius:12,padding:12,marginBottom:8,border:`1px solid ${cav.cor||"#ffffff22"}33`}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}
+                onClick={()=>{ if(!isDeleting) openChar(c); }}>
+                <span style={{fontSize:32}}>{cav.icon||"⚔️"}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:800,color:"#dde"}}>{c.name}</div>
+                  <div style={{fontSize:11,color:cav.cor||"#888"}}>{cav.nome}</div>
+                  <div style={{fontSize:10,color:"#555"}}>Nível {c.level} · {perf.icon} {perf.nome}</div>
+                </div>
+                {!isDeleting && <span style={{fontSize:18,color:"#555"}}>→</span>}
+              </div>
+              {!isDeleting ? (
+                <button onClick={()=>{setDelConfirm(c.id);setDelStep(1);}}
+                  style={{marginTop:8,width:"100%",padding:5,borderRadius:6,border:"none",
+                    cursor:"pointer",background:"#ff444411",color:"#f87171",fontSize:10,fontWeight:700}}>
+                  🗑️ Excluir personagem
+                </button>
+              ) : delStep===1 ? (
+                <div style={{marginTop:8,background:"#f8717122",borderRadius:8,padding:10}}>
+                  <div style={{fontSize:11,color:"#f87171",marginBottom:8}}>Tem certeza que deseja excluir <strong>{c.name}</strong>?</div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={()=>setDelStep(2)} style={{flex:1,padding:7,borderRadius:6,border:"none",cursor:"pointer",background:"#ef4444",color:"#fff",fontSize:11,fontWeight:700}}>Sim, excluir</button>
+                    <button onClick={()=>{setDelConfirm(null);setDelStep(0);}} style={{flex:1,padding:7,borderRadius:6,border:"none",cursor:"pointer",background:"#ffffff10",color:"#888",fontSize:11}}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{marginTop:8,background:"#f8717133",borderRadius:8,padding:10}}>
+                  <div style={{fontSize:11,color:"#f87171",marginBottom:8}}>⚠️ Esta ação é <strong>irreversível</strong>! Confirma?</div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={()=>deleteChar(c.id)} style={{flex:1,padding:7,borderRadius:6,border:"none",cursor:"pointer",background:"#ef4444",color:"#fff",fontSize:11,fontWeight:700}}>Excluir definitivamente</button>
+                    <button onClick={()=>{setDelConfirm(null);setDelStep(0);}} style={{flex:1,padding:7,borderRadius:6,border:"none",cursor:"pointer",background:"#ffffff10",color:"#888",fontSize:11}}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {chars.length < 5 && (
+          <button onClick={startCreate} style={{width:"100%",padding:14,borderRadius:12,border:"2px dashed #ffffff22",background:"transparent",color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:8}}>
+            + Criar novo guerreiro
+          </button>
+        )}
+        {chars.length===0 && <div style={{textAlign:"center",padding:"20px 0",color:"#444",fontSize:12}}>Nenhum guerreiro ainda. Crie o seu!</div>}
+      </div>
+    );
+  }
+
+  // ── CRIAR ──────────────────────────────────────────────────────────────────
+  if (view==="create") {
+    const { step, cavaleiro, nome, quiz, quizIdx, perfilBase, stats } = creating;
+    const c = CAVALEIROS[cavaleiro]||{};
+    const hp  = stats ? (1*20 + (stats.def||0)*10 + (stats.est||0)*5) : 0;
+    const co  = stats ? (1*10 + (stats.est||0)*3  + (stats.int||0)*2) : 0;
+    return (
+      <div>
+        <button onClick={()=>{ setView("list"); setCreating(INIT); }}
+          style={{background:"#ffffff10",border:"none",borderRadius:8,padding:"6px 12px",color:"#aaa",cursor:"pointer",fontSize:12,marginBottom:16}}>
+          ← Voltar
+        </button>
+
+        {/* STEP 1 — Nome */}
+        {step===1 && (<>
+          <div style={{fontSize:14,fontWeight:800,color:"#ffd700",marginBottom:4}}>⚔️ Nome do seu guerreiro</div>
+          <div style={{fontSize:11,color:"#555",marginBottom:16}}>Como você quer ser chamado no jogo?</div>
+          <input value={nome} onChange={e=>setCreating({...creating,nome:e.target.value})}
+            placeholder="Ex: Seiya de Pégaso" maxLength={20}
+            style={{width:"100%",padding:12,borderRadius:10,background:"#ffffff0a",border:"1px solid #ffffff15",color:"#dde",fontSize:14,outline:"none",fontFamily:"inherit",marginBottom:16}}/>
+          <button onClick={()=>nome.trim()&&setCreating({...creating,step:2})} disabled={!nome.trim()}
+            style={{width:"100%",padding:13,borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:800,
+              background:nome.trim()?"linear-gradient(90deg,#ffd700,#ff8c00)":"#ffffff10",
+              color:nome.trim()?"#000":"#555"}}>
+            Continuar →
+          </button>
+        </>)}
+
+        {/* STEP 2 — Quiz */}
+        {step===2 && quiz.length>0 && (()=>{
+          const current = quiz[quizIdx];
+          if (!current) return null;
+          return (<>
+            <div style={{fontSize:11,color:"#555",marginBottom:4}}>Pergunta {quizIdx+1} de {quiz.length}</div>
+            <div style={{background:"#ffffff10",borderRadius:4,height:4,marginBottom:16,overflow:"hidden"}}>
+              <div style={{width:`${(quizIdx/quiz.length)*100}%`,height:"100%",background:"#ffd700",borderRadius:4}}/>
+            </div>
+            <div style={{fontSize:14,fontWeight:700,color:"#dde",marginBottom:16,lineHeight:1.6}}>{current.texto}</div>
+            {current.respostasOrdem.map((resp,i)=>(
+              <button key={i} onClick={()=>answerQuiz(resp)}
+                style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid #ffffff15",
+                  background:"#ffffff08",color:"#bbb",fontSize:12,cursor:"pointer",marginBottom:8,
+                  textAlign:"left",fontFamily:"inherit",lineHeight:1.4}}>
+                <span style={{fontSize:10,fontWeight:900,color:"#ffd700",marginRight:8}}>[{resp.tipo.toUpperCase()}]</span>
+                {resp.texto}
+              </button>
+            ))}
+          </>);
+        })()}
+
+        {/* STEP 3 — Afinidade (cavaleiro) */}
+        {step===3 && (<>
+          <div style={{fontSize:14,fontWeight:800,color:"#ffd700",marginBottom:4}}>Escolha sua Afinidade</div>
+          <div style={{fontSize:11,color:"#555",marginBottom:16}}>Com qual cavaleiro você mais se identifica?</div>
+          {Object.entries(CAVALEIROS).map(([k,cv])=>(
+            <div key={k} onClick={()=>{
+              const stats = sortearStats(perfilBase, k);
+              setCreating({...creating, cavaleiro:k, stats, step:4});
+            }}
+              style={{background:cavaleiro===k?`${cv.cor}22`:"#0d0d1e",borderRadius:12,padding:12,marginBottom:8,
+                cursor:"pointer",border:`2px solid ${cavaleiro===k?cv.cor:"#ffffff10"}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:28}}>{cv.icon}</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:800,color:cv.cor}}>{cv.nome}</div>
+                  <div style={{fontSize:10,color:"#555"}}>{cv.arch}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>)}
+
+        {/* STEP 4 — Stats finais */}
+        {step===4 && stats && (<>
+          <div style={{textAlign:"center",marginBottom:12}}>
+            <div style={{fontSize:32,marginBottom:4}}>{c.icon}</div>
+            <div style={{fontSize:15,fontWeight:900,color:c.cor}}>{nome}</div>
+            <div style={{fontSize:11,color:"#555",marginTop:2}}>Afinidade: {c.nome}</div>
+          </div>
+
+          <div style={{background:"#0d0d1e",borderRadius:12,padding:12,marginBottom:10,border:`1px solid ${c.cor}33`}}>
+            <div style={{fontSize:10,color:"#555",fontWeight:700,marginBottom:10,letterSpacing:1}}>ATRIBUTOS INICIAIS</div>
+            {[{k:"ata",l:"Ataque",ic:"⚔️"},{k:"def",l:"Defesa",ic:"🛡️"},{k:"vel",l:"Velocidade",ic:"⚡"},{k:"int",l:"Inteligência",ic:"🧠"},{k:"est",l:"Estamina",ic:"💪"}].map(a=>{
+              const val = stats[a.k]||0;
+              return (
+                <div key={a.k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <span style={{width:20,textAlign:"center",fontSize:14}}>{a.ic}</span>
+                  <span style={{flex:1,fontSize:12,color:"#888"}}>{a.l}</span>
+                  <span style={{fontSize:16,fontWeight:900,color:"#dde",minWidth:28,textAlign:"right"}}>{val}</span>
+                </div>
+              );
+            })}
+            {/* HP e Cosmo */}
+            <div style={{display:"flex",gap:6,marginTop:10,paddingTop:10,borderTop:"1px solid #ffffff08"}}>
+              <div style={{flex:1,background:"#0a140a",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#22c55e"}}>HP</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#22c55e"}}>{hp}</div>
+              </div>
+              <div style={{flex:1,background:"#0a0a14",borderRadius:8,padding:"6px 8px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#a855f7"}}>Cosmo</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#a855f7"}}>{co}</div>
+              </div>
+            </div>
+            <div style={{fontSize:9,color:"#444",marginTop:8,textAlign:"center"}}>
+              Total: {Object.values(stats).reduce((a,b)=>a+b,0)} pontos
+            </div>
+          </div>
+
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <button onClick={reroll}
+              style={{flex:1,padding:9,borderRadius:8,border:"1px solid #ffd70033",cursor:"pointer",
+                background:"#ffd70011",color:"#ffd700",fontSize:11,fontWeight:700}}>
+              🎲 Reroll
+            </button>
+            <button onClick={refazer}
+              style={{flex:1,padding:9,borderRadius:8,border:"1px solid #ffffff15",cursor:"pointer",
+                background:"#ffffff08",color:"#888",fontSize:11,fontWeight:700}}>
+              ↩️ Recomeçar
+            </button>
+          </div>
+          <button onClick={saveChar} disabled={saving}
+            style={{width:"100%",padding:14,borderRadius:12,border:"none",cursor:"pointer",
+              fontSize:14,fontWeight:800,opacity:saving?0.7:1,
+              background:`linear-gradient(90deg,#ffd700,${c.cor})`,color:"#000"}}>
+            {saving?"Criando...":"⚔️ Começar jornada!"}
+          </button>
+        </>)}
+      </div>
+    );
+  }
+
+  // ── JOGAR ──────────────────────────────────────────────────────────────────
+  if (view==="play" && activeChar) {
+    const cav  = CAVALEIROS[activeChar.cavaleiro]||{};
+    const perf = PERFIS[activeChar.perfil]||{};
+    const armorStats = calcArmorStats(activeChar, inventory);
+    const slots = activeChar.slots||{};
+
+    // BOTTOM NAV do GAME
+    const gameTabs = [
+      {k:"warrior", ic:"⚔️",  l:"Guerreiro"},
+      {k:"battle",  ic:"🗡️",  l:"Batalha"},
+      {k:"forge",   ic:"🔨",  l:"Forja"},
+      {k:"gprefs",  ic:"⚙️",  l:"Preferências"},
+    ];
+
+    return (
+      <div style={{display:"flex",flexDirection:"column",height:"100%",minHeight:0}}>
+        {/* Header do personagem */}
+        <div style={{flexShrink:0,background:`linear-gradient(135deg,${cav.cor}22,#0d0d1e)`,borderRadius:12,padding:"8px 12px",marginBottom:6,border:`1px solid ${cav.cor}44`,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:22}}>{cav.icon}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#dde"}}>{activeChar.name}</div>
+            <div style={{fontSize:9,color:cav.cor}}>{cav.nome} · {perf.icon} {perf.nome} · Lv{activeChar.level}</div>
+          </div>
+          <button onClick={async ()=>{
+              setBagLoading(true);
+              const keys=["helm","armor","belt","gauntlets","leggings","boots"];
+              for(const k of keys) {
+                for(let lv=1; lv<=7; lv++) {
+                  await api.post(`/game/inventory/${activeChar.id}`,{
+                    item_type:"armor", item_key:k, level:lv, quantity:5
+                  }).catch(()=>{});
+                }
+              }
+              // Gems
+              const gems=[{key:"ki",qty:99999},{key:"frags",qty:99999},{key:"frag_a",qty:99},{key:"frag_b",qty:99},{key:"frag_c",qty:99},{key:"pedras",qty:999}];
+              for(const g of gems) await api.post(`/game/inventory/${activeChar.id}`,{item_type:"gem",item_key:g.key,level:1,quantity:g.qty}).catch(()=>{});
+              await loadInventory(activeChar.id);
+              setBagLoading(false);
+            }}
+            disabled={bagLoading}
+            style={{background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:8,padding:"4px 10px",color:"#22c55e",cursor:"pointer",fontSize:11,fontWeight:700,opacity:bagLoading?0.6:1}}>
+            {bagLoading?"⏳":"🎒"}
+          </button>
+          <button onClick={()=>{setView("list");setActiveChar(null);setInventory([]);}}
+            style={{background:"#ffffff10",border:"none",borderRadius:8,padding:"4px 8px",color:"#aaa",cursor:"pointer",fontSize:10}}>
+            ← Sair
+          </button>
+        </div>
+
+        {/* Conteúdo scrollável */}
+        {/* Armadura: sem scroll, estica até o bottom nav */}
+        {gameTab==="warrior" && warriorTab==="armor" && (
+          <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
+            <div style={{flexShrink:0,display:"flex",gap:0,marginBottom:6,background:"#07070f",borderRadius:8,padding:3}}>
+              {[{k:"status",l:"📊 Status"},{k:"skills",l:"✨ Skills"},{k:"armor",l:"🛡️ Armadura"},{k:"bag",l:"🎒 Bag"},{k:"gems",l:"💎 Joias"}].map(t=>(
+                <button key={t.k} onClick={()=>setWarriorTab(t.k)}
+                  style={{flex:1,padding:"6px 2px",border:"none",cursor:"pointer",borderRadius:6,
+                    background:warriorTab===t.k?"#ffd70022":"transparent",
+                    color:warriorTab===t.k?"#ffd700":"#555",fontSize:9,fontWeight:700}}>
+                  {t.l}
+                </button>
+              ))}
+            </div>
+              <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+                {/* Modal de armadura — equip ou detalhe/remover */}
+                {armorModal && (()=>{
+                  const {slot, mode} = armorModal;
+                  const s = ARMOR_SLOTS.find(a=>a.key===slot);
+                  const eq = slots[slot];
+                  const items = getInvItems(slot);
+                  const close = () => setArmorModal(null);
+
+                  return (
+                    <div style={{position:"fixed",inset:0,zIndex:200,background:"#000000cc",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end"}}
+                      onClick={close}>
+                      <div onClick={e=>e.stopPropagation()}
+                        style={{background:"#0d0d1e",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:440,maxHeight:"75vh",overflowY:"auto",margin:"0 auto"}}>
+
+                        {/* Header */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                          <div style={{fontSize:16,fontWeight:800,color:"#ffd700"}}>{s?.icon} {s?.name}</div>
+                          <button onClick={close} style={{background:"#ffffff10",border:"none",borderRadius:8,padding:"4px 10px",color:"#aaa",cursor:"pointer",fontSize:12}}>✕</button>
+                        </div>
+
+                        {/* Modo detalhe — slot ocupado */}
+                        {mode==="detail" && eq && (<>
+                          <div style={{background:"#07070f",borderRadius:12,padding:14,marginBottom:12,textAlign:"center",border:`1px solid ${LV_COLORS[eq.level]}44`}}>
+                            {getArmorImg(activeChar.cavaleiro, slot, eq.level) ? (
+                              <img src={getArmorImg(activeChar.cavaleiro, slot, eq.level)}
+                                style={{width:96,height:96,objectFit:"contain",marginBottom:8}} alt=""/>
+                            ) : (
+                              <div style={{fontSize:48,marginBottom:8}}>{s?.icon}</div>
+                            )}
+                            <div style={{fontSize:15,fontWeight:900,color:LV_COLORS[eq.level],marginBottom:4}}>
+                              {s?.name} — Nível {eq.level}
+                            </div>
+                            <div style={{fontSize:11,color:"#555",marginBottom:10}}>Equipada atualmente</div>
+                            {/* Bônus desta peça */}
+                            <div style={{background:"#0d0d1e",borderRadius:8,padding:10}}>
+                              <div style={{fontSize:11,color:"#888",fontWeight:700,marginBottom:6}}>Bônus de atributo</div>
+                              {(ARMOR_BONUS[slot]||[]).map((b,bi)=>{
+                                const pct=b.pct[eq.level-1]||0;
+                                if(!pct) return null;
+                                const base=armorStats.base[b.st]||0;
+                                const gain=Math.floor(base*(pct/100));
+                                return (
+                                  <div key={bi} style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                                    <span style={{fontSize:12,color:"#888"}}>{b.st.toUpperCase()}</span>
+                                    <span style={{fontSize:12,color:"#22c55e",fontWeight:700}}>+{pct.toFixed(1)}% (+{gain} pts)</span>
+                                  </div>
+                                );
+                              })}
+                              {!(ARMOR_BONUS[slot]||[]).some(b=>b.pct[eq.level-1]) && (
+                                <div style={{fontSize:11,color:"#444"}}>Sem bônus neste nível</div>
+                              )}
+                            </div>
+                          </div>
+                          <button onClick={()=>{unequipSlot(slot);close();}}
+                            style={{width:"100%",padding:12,borderRadius:10,border:"1px solid #f8717144",background:"#f8717111",color:"#f87171",fontSize:13,cursor:"pointer",fontWeight:700}}>
+                            🗑️ Remover da armadura
+                          </button>
+                        </>)}
+
+                        {/* Modo equip — slot vazio ou troca */}
+                        {mode==="equip" && (<>
+                          {eq && (
+                            <div style={{background:"#f8717111",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:11,color:"#f87171"}}>
+                              ⚠️ Isso vai substituir a peça Lv{eq.level} equipada
+                            </div>
+                          )}
+                          {items.length===0 ? (
+                            <div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:13}}>
+                              <div style={{fontSize:36,marginBottom:8}}>{s?.icon}</div>
+                              Nenhuma peça de {s?.name} na bag.<br/>
+                              <span style={{fontSize:11,marginTop:4,display:"block"}}>Ganhe em batalhas ou na Forja!</span>
+                            </div>
+                          ) : (
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                              {items.map(i=>{
+                                const isEq = eq?.level===i.level;
+                                return (
+                                  <button key={i.level}
+                                    onClick={()=>{equipSlot(slot,i.level);close();}}
+                                    style={{background:isEq?"#534AB733":"#07070f",borderRadius:10,padding:12,
+                                      border:`1px solid ${isEq?"#534AB7":LV_COLORS[i.level]+"55"}`,
+                                      cursor:"pointer",textAlign:"center"}}>
+                                    {getArmorImg(activeChar.cavaleiro, slot, i.level) ? (
+                                      <img src={getArmorImg(activeChar.cavaleiro, slot, i.level)}
+                                        style={{width:64,height:64,objectFit:"contain",marginBottom:6}} alt=""/>
+                                    ) : (
+                                      <div style={{fontSize:36,marginBottom:6}}>{s?.icon}</div>
+                                    )}
+                                    <div style={{fontSize:13,fontWeight:700,color:LV_COLORS[i.level]}}>Nível {i.level}</div>
+                                    <div style={{fontSize:10,color:"#555",marginTop:2}}>x{i.quantity} disponível</div>
+                                    {(ARMOR_BONUS[slot]||[]).map((b,bi)=>{
+                                      const p=b.pct[i.level-1]||0;
+                                      if(!p) return null;
+                                      return <div key={bi} style={{fontSize:10,color:"#22c55e",marginTop:2}}>+{p.toFixed(1)}% {b.st.toUpperCase()}</div>;
+                                    })}
+                                    {isEq && <div style={{fontSize:10,color:"#534AB7",marginTop:3,fontWeight:700}}>✓ Equipada</div>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>)}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div style={{display:"grid",gridTemplateColumns:"100px 1fr 100px",gap:6,alignItems:"start",width:"100%"}}>
+                  {/* slots esquerda */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {["helm","gauntlets","boots"].map(k=>{
+                      const s=ARMOR_SLOTS.find(a=>a.key===k),eq=slots[k];
+                      return (
+                        <button key={k} onClick={()=>setArmorModal({slot:k, mode:slots[k]?"detail":"equip"})}
+                          style={{width:"100%",background:eq?"#534AB722":"#0d0d1e",borderRadius:10,padding:"8px 4px",
+                            border:`2px solid ${eq?LV_COLORS[eq.level]+"99":"#ffffff10"}`,
+                            cursor:"pointer",display:"flex",flexDirection:"column",
+                            alignItems:"center",justifyContent:"center",gap:3,minHeight:76}}>
+                          {eq && getArmorImg(activeChar.cavaleiro, k, eq.level) ? (
+                            <img src={getArmorImg(activeChar.cavaleiro, k, eq.level)}
+                              style={{width:54,height:54,objectFit:"contain"}} alt={s?.name}/>
+                          ) : (
+                            <div style={{fontSize:eq?36:22,opacity:eq?1:0.3}}>{s?.icon}</div>
+                          )}
+                          <div style={{fontSize:11,color:eq?"#888":"#444",fontWeight:700}}>{s?.name}</div>
+                          {eq
+                            ? <div style={{fontSize:13,fontWeight:900,color:LV_COLORS[eq.level]}}>Lv {eq.level}</div>
+                            : <div style={{fontSize:10,color:"#333"}}>vazio</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* boneco central */}
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <div style={{
+                      width:"100%",maxWidth:90,maxHeight:220,aspectRatio:"0.52",
+                      background:"radial-gradient(ellipse at 50% 40%,rgba(83,74,183,.3),rgba(4,6,14,.98))",
+                      border:"1px solid #534AB788",borderRadius:10,
+                      overflow:"hidden",position:"relative"}}>
+                      <svg viewBox="0 0 60 130" fill="none" style={{width:"100%",height:"100%"}}>
+                        {(()=>{
+                          const eq=slots,col=(lv,def)=>lv>0?LV_COLORS[lv]:def;
+                          const helm=eq.helm?.level||0,armor=eq.armor?.level||0,belt=eq.belt?.level||0,gauntlets=eq.gauntlets?.level||0,leggings=eq.leggings?.level||0,boots=eq.boots?.level||0;
+                          return (<>
+                            <ellipse cx="30" cy="13" rx="10" ry="11" fill={col(helm,"#1a2a4a")+"cc"} stroke={col(helm,"#534AB7")} strokeWidth="1.5"/>
+                            <rect x="17" y="23" width="26" height="32" rx="4" fill={col(armor,"#1a2a4a")+"cc"} stroke={col(armor,"#534AB7")} strokeWidth="1.5"/>
+                            <rect x="3"  y="25" width="13" height="27" rx="3" fill={col(gauntlets,"#0f1a30")+"cc"} stroke={col(gauntlets,"#3a3a8a")} strokeWidth="1"/>
+                            <rect x="44" y="25" width="13" height="27" rx="3" fill={col(gauntlets,"#0f1a30")+"cc"} stroke={col(gauntlets,"#3a3a8a")} strokeWidth="1"/>
+                            <rect x="17" y="53" width="26" height="5" rx="2" fill={col(belt,"#0f1a30")+"cc"} stroke={col(belt,"#3a3a8a")} strokeWidth="1"/>
+                            <rect x="18" y="57" width="11" height="38" rx="3" fill={col(leggings,"#1a2a4a")+"cc"} stroke={col(leggings,"#534AB7")} strokeWidth="1.5"/>
+                            <rect x="31" y="57" width="11" height="38" rx="3" fill={col(leggings,"#1a2a4a")+"cc"} stroke={col(leggings,"#534AB7")} strokeWidth="1.5"/>
+                            <rect x="17" y="93" width="13" height="14" rx="3" fill={col(boots,"#0f1a30")+"cc"} stroke={col(boots,"#3a3a8a")} strokeWidth="1"/>
+                            <rect x="30" y="93" width="13" height="14" rx="3" fill={col(boots,"#0f1a30")+"cc"} stroke={col(boots,"#3a3a8a")} strokeWidth="1"/>
+                          </>);
+                        })()}
+                      </svg>
+                    </div>
+                    {/* Stats mini abaixo do boneco */}
+                    <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2}}>
+                      {[{k:"ata",l:"ATA"},{k:"def",l:"DEF"},{k:"vel",l:"VEL"},{k:"int",l:"INT"},{k:"est",l:"EST"}].map(a=>(
+                        <div key={a.k} style={{display:"flex",justifyContent:"space-between",
+                          background:"#0d0d1e",borderRadius:4,padding:"2px 6px",border:"1px solid #ffffff10"}}>
+                          <span style={{fontSize:11,color:"#555",fontWeight:700}}>{a.l}</span>
+                          <span style={{fontSize:13,fontWeight:900,color:"#dde"}}>{armorStats.total[a.k]||0}</span>
+                        </div>
+                      ))}
+                      <div style={{display:"flex",gap:2,marginTop:1}}>
+                        <div style={{flex:1,background:"#0a140a",borderRadius:4,padding:"2px 3px",textAlign:"center",border:"1px solid #22c55e33"}}>
+                          <div style={{fontSize:10,color:"#22c55e",lineHeight:1}}>HP</div>
+                          <div style={{fontSize:11,fontWeight:700,color:"#22c55e"}}>{activeChar.level*20+(armorStats.total.def||0)*10+(armorStats.total.est||0)*5}</div>
+                        </div>
+                        <div style={{flex:1,background:"#0a0a14",borderRadius:4,padding:"2px 3px",textAlign:"center",border:"1px solid #a855f733"}}>
+                          <div style={{fontSize:10,color:"#a855f7",lineHeight:1}}>CO</div>
+                          <div style={{fontSize:11,fontWeight:700,color:"#a855f7"}}>{activeChar.level*10+(armorStats.total.est||0)*3+(armorStats.total.int||0)*2}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* slots direita */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {["armor","belt","leggings"].map(k=>{
+                      const s=ARMOR_SLOTS.find(a=>a.key===k),eq=slots[k];
+                      return (
+                        <button key={k} onClick={()=>setArmorModal({slot:k, mode:slots[k]?"detail":"equip"})}
+                          style={{width:"100%",background:eq?"#534AB722":"#0d0d1e",borderRadius:10,padding:"8px 4px",
+                            border:`2px solid ${eq?LV_COLORS[eq.level]+"99":"#ffffff10"}`,
+                            cursor:"pointer",display:"flex",flexDirection:"column",
+                            alignItems:"center",justifyContent:"center",gap:3,minHeight:76}}>
+                          {eq && getArmorImg(activeChar.cavaleiro, k, eq.level) ? (
+                            <img src={getArmorImg(activeChar.cavaleiro, k, eq.level)}
+                              style={{width:54,height:54,objectFit:"contain"}} alt={s?.name}/>
+                          ) : (
+                            <div style={{fontSize:eq?36:22,opacity:eq?1:0.3}}>{s?.icon}</div>
+                          )}
+                          <div style={{fontSize:11,color:eq?"#888":"#444",fontWeight:700}}>{s?.name}</div>
+                          {eq
+                            ? <div style={{fontSize:13,fontWeight:900,color:LV_COLORS[eq.level]}}>Lv {eq.level}</div>
+                            : <div style={{fontSize:10,color:"#333"}}>vazio</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+          </div>
+        )}
+
+        <div style={{flex:1,overflowY:"auto",minHeight:0,paddingBottom:8,
+          display:gameTab==="warrior"&&warriorTab==="armor"?"none":"block"}}>
+
+        {/* ABA GUERREIRO */}
+        {gameTab==="warrior" && warriorTab!=="armor" && (
+          <div>
+            {/* Sub-abas internas */}
+            <div style={{display:"flex",gap:0,marginBottom:8,background:"#07070f",borderRadius:8,padding:3}}>
+              {[{k:"status",l:"📊 Status"},{k:"skills",l:"✨ Skills"},{k:"armor",l:"🛡️ Armadura"},{k:"bag",l:"🎒 Bag"},{k:"gems",l:"💎 Joias"}].map(t=>(
+                <button key={t.k} onClick={()=>setWarriorTab(t.k)}
+                  style={{flex:1,padding:"6px 2px",border:"none",cursor:"pointer",borderRadius:6,
+                    background:warriorTab===t.k?"#ffd70022":"transparent",
+                    color:warriorTab===t.k?"#ffd700":"#555",fontSize:9,fontWeight:700}}>
+                  {t.l}
+                </button>
+              ))}
+            </div>
+
+            {/* STATUS */}
+            {warriorTab==="status" && (
+              <div style={{padding:"0 8px"}}>
+                {/* Admin inline */}
+                {user?.is_admin && (
+                  <button onClick={()=>setGameAdmin(!gameAdmin)}
+                    style={{width:"100%",padding:"4px 8px",borderRadius:6,border:"1px solid #ffd70033",background:"#ffd70011",color:"#ffd700",fontSize:10,fontWeight:700,cursor:"pointer",marginBottom:8}}>
+                    {gameAdmin?"✕ Fechar Admin":"⚙️ Admin"}
+                  </button>
+                )}
+                {gameAdmin && user?.is_admin && (
+                  <GameAdminInline charId={activeChar.id} onUpdate={async()=>{
+                    const d = await api.get("/game/characters").catch(()=>null);
+                    if(Array.isArray(d)){const c=d.find(x=>x.id===activeChar.id);if(c)setActiveChar(c);}
+                  }}/>
+                )}
+                {/* 3 colunas: boneco | stats | pontos */}
+                <div style={{display:"flex",gap:8,marginBottom:10}}>
+                  {/* Boneco SVG */}
+                  <div style={{flexShrink:0,width:80,background:"rgba(83,74,183,.08)",border:"1px solid rgba(83,74,183,.2)",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:6}}>
+                    <svg viewBox="0 0 80 130" fill="none" style={{width:70,height:108,opacity:.9}}>
+                      {(()=>{
+                        const eq=activeChar.slots||{};
+                        const col=(lv,def)=>lv>0?LV_COLORS[lv]:def;
+                        const helm=eq.helm?.level||0,armor=eq.armor?.level||0,belt=eq.belt?.level||0,gauntlets=eq.gauntlets?.level||0,leggings=eq.leggings?.level||0,boots=eq.boots?.level||0;
+                        return (<>
+                          <ellipse cx="40" cy="18" rx="12" ry="13" fill={col(helm,"#1a2a4a")+"99"} stroke={col(helm,"#534AB7")} strokeWidth="1.5"/>
+                          <rect x="26" y="30" width="28" height="35" rx="4" fill={col(armor,"#1a2a4a")+"99"} stroke={col(armor,"#534AB7")} strokeWidth="1.5"/>
+                          <rect x="10" y="32" width="14" height="28" rx="3" fill={col(gauntlets,"#0f1a30")+"99"} stroke={col(gauntlets,"#3a3a8a")} strokeWidth="0.8"/>
+                          <rect x="56" y="32" width="14" height="28" rx="3" fill={col(gauntlets,"#0f1a30")+"99"} stroke={col(gauntlets,"#3a3a8a")} strokeWidth="0.8"/>
+                          <rect x="26" y="62" width="28" height="5" rx="2" fill={col(belt,"#0f1a30")+"99"} stroke={col(belt,"#3a3a8a")} strokeWidth="0.8"/>
+                          <rect x="28" y="64" width="11" height="28" rx="3" fill={col(leggings,"#1a2a4a")+"99"} stroke={col(leggings,"#534AB7")} strokeWidth="1.5"/>
+                          <rect x="41" y="64" width="11" height="28" rx="3" fill={col(leggings,"#1a2a4a")+"99"} stroke={col(leggings,"#534AB7")} strokeWidth="1.5"/>
+                          <rect x="27" y="91" width="13" height="11" rx="2" fill={col(boots,"#0f1a30")+"99"} stroke={col(boots,"#3a3a8a")} strokeWidth="0.8"/>
+                          <rect x="40" y="91" width="13" height="11" rx="2" fill={col(boots,"#0f1a30")+"99"} stroke={col(boots,"#3a3a8a")} strokeWidth="0.8"/>
+                        </>);
+                      })()}
+                    </svg>
+                    <div style={{fontSize:9,color:"rgba(83,74,183,.7)",marginTop:2}}>{cav.icon}</div>
+                  </div>
+
+                  {/* Stats + coluna Pts/Salvar */}
+                  <div style={{flex:1,display:"flex",gap:6}}>
+                    {/* Sub-coluna esquerda: lista de stats */}
+                    <div style={{flex:1}}>
+                      {(()=>{
+                        const livres=(activeChar.pontos_livres||0)-Object.values(distribPts).reduce((a,b)=>a+b,0);
+                        const hasPts=(activeChar.pontos_livres||0)>0;
+                        return (<>
+                          {[
+                            {k:"ata",l:"Ataque",      ic:"⚔️"},
+                            {k:"def",l:"Defesa",       ic:"🛡️"},
+                            {k:"vel",l:"Velocidade",   ic:"⚡"},
+                            {k:"int",l:"Inteligência", ic:"🧠"},
+                            {k:"est",l:"Estamina",     ic:"💪"},
+                          ].map(a=>{
+                            const base=armorStats.base[a.k]||0,total=armorStats.total[a.k]||0,diff=total-base;
+                            const hasBonus=diff>0,hasPenalty=diff<0;
+                            const numColor=hasBonus?"#22c55e":hasPenalty?"#ef4444":"#dde";
+                            const isOpen=tooltipStat===a.k,pending=distribPts[a.k]||0;
+                            return (
+                              <div key={a.k} style={{marginBottom:8}}>
+                                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                  <span style={{fontSize:13,width:20,flexShrink:0}}>{a.ic}</span>
+                                  <span style={{fontSize:11,color:"#888",width:82,flexShrink:0}}>{a.l}</span>
+                                  <span onClick={()=>setTooltipStat(isOpen?null:a.k)}
+                                    style={{fontSize:16,fontWeight:900,color:numColor,width:32,flexShrink:0,textAlign:"right",cursor:diff!==0?"pointer":"default"}}>
+                                    {total}
+                                  </span>
+                                  {hasPts && (
+                                    <div style={{display:"flex",flexDirection:"column",gap:1,marginLeft:4,width:18,flexShrink:0}}>
+                                      <HoldBtn
+                                        onAction={()=>setDistribPts(p=>{
+                                          const cur=p[a.k]||0;
+                                          const livresNow=(activeChar.pontos_livres||0)-Object.values(p).reduce((a,b)=>a+b,0);
+                                          if(livresNow<=0) return p;
+                                          return {...p,[a.k]:cur+1};
+                                        })}
+                                        disabled={livres<=0}
+                                        style={{width:18,height:14,padding:0,border:"none",background:"transparent",color:livres>0?"#555":"#333",fontSize:8,cursor:livres>0?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                        ▲
+                                      </HoldBtn>
+                                      <HoldBtn
+                                        onAction={()=>setDistribPts(p=>{const cur=p[a.k]||0;if(cur<=0)return p;return {...p,[a.k]:cur-1};})}
+                                        disabled={pending<=0}
+                                        style={{width:18,height:14,padding:0,border:"none",background:"transparent",color:pending>0?"#555":"#333",fontSize:8,cursor:pending>0?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                        ▼
+                                      </HoldBtn>
+                                    </div>
+                                  )}
+                                  {pending>0&&<span style={{fontSize:10,color:"#ffd700",fontWeight:700,marginLeft:4}}>+{pending}</span>}
+                                </div>
+                                {isOpen&&diff!==0&&(
+                                  <div style={{marginTop:3,marginLeft:26,background:"#07070f",borderRadius:8,padding:"6px 10px",border:"1px solid #ffffff15",fontSize:11}}>
+                                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                                      <span style={{color:"#888"}}>Base</span><span style={{color:"#dde",fontWeight:700}}>{base}</span>
+                                    </div>
+                                    <div style={{display:"flex",justifyContent:"space-between"}}>
+                                      <span style={{color:hasBonus?"#22c55e":"#ef4444"}}>{hasBonus?"Bônus":"Penalidade"}</span>
+                                      <span style={{color:hasBonus?"#22c55e":"#ef4444",fontWeight:700}}>{diff>0?"+":""}{diff}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {/* HP + Cosmo ficam aqui, abaixo dos 5 stats */}
+                          <div style={{display:"flex",gap:6,marginTop:4}}>
+                            <div style={{flex:1,background:"#0d0d1e",borderRadius:7,padding:"6px 8px",textAlign:"center",border:"1px solid #ffffff10"}}>
+                              <div style={{fontSize:9,color:"#555"}}>HP</div>
+                              <div style={{fontSize:13,fontWeight:700,color:"#dde"}}>{activeChar.level*20+(armorStats.total.def||0)*10+(armorStats.total.est||0)*5}</div>
+                            </div>
+                            <div style={{flex:1,background:"#0d0d1e",borderRadius:7,padding:"6px 8px",textAlign:"center",border:"1px solid #ffffff10"}}>
+                              <div style={{fontSize:9,color:"#555"}}>Cosmo</div>
+                              <div style={{fontSize:13,fontWeight:700,color:"#dde"}}>{activeChar.level*10+(armorStats.total.est||0)*3+(armorStats.total.int||0)*2}</div>
+                            </div>
+                          </div>
+                        </>);
+                      })()}
+                    </div>
+
+                    {/* Sub-coluna direita: Pts + Salvar (só aparece quando há pontos livres) */}
+                    {(activeChar.pontos_livres||0)>0 && (()=>{
+                      const livres=(activeChar.pontos_livres||0)-Object.values(distribPts).reduce((a,b)=>a+b,0);
+                      const totalDist=Object.values(distribPts).reduce((a,b)=>a+b,0);
+                      return (
+                        <div style={{flexShrink:0,width:36,display:"flex",flexDirection:"column",gap:4,paddingTop:0}}>
+                          {/* Caixa Pts */}
+                          <div style={{background:"#0d0d1e",borderRadius:8,padding:"6px 4px",textAlign:"center",border:"1px solid #ffd70033",height:48,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                            <div style={{fontSize:7,color:"#ffd700",lineHeight:1.2,marginBottom:1,fontWeight:700,letterSpacing:0.5}}>PTS</div>
+                            <div style={{fontSize:18,fontWeight:900,color:"#ffd700",lineHeight:1}}>{livres}</div>
+                          </div>
+                          {/* Caixa Salvar */}
+                          <button onClick={savePoints} disabled={savingPts||totalDist===0}
+                            style={{background:totalDist>0?"#ffd70022":"#0d0d1e",borderRadius:8,padding:"6px 4px",
+                              border:`1px solid ${totalDist>0?"#ffd70055":"#ffffff10"}`,
+                              cursor:totalDist>0?"pointer":"default",height:48,
+                              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                            <div style={{fontSize:14,lineHeight:1}}>{totalDist>0?"✓":"·"}</div>
+                            <div style={{fontSize:7,color:totalDist>0?"#ffd700":"#333",lineHeight:1.2,fontWeight:700,letterSpacing:0.5}}>
+                              {savingPts?"...":"SALVAR"}
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+
+            {/* SKILLS */}
+            {warriorTab==="skills" && (()=>{
+              const livresSkill = (activeChar.skill_points_livres||0) - Object.values(distribSkills).reduce((a,b)=>a+b,0);
+              const totalDistSkill = Object.values(distribSkills).reduce((a,b)=>a+b,0);
+              const hasSkPts = (activeChar.skill_points_livres||0) > 0;
+
+              const SKILLS_DEF = [
+                { k:"atk",  l:"Poder de Ataque",  ic:"🔥", color:"#ff8c00", desc:"Aumenta o dano base em batalha",
+                  effects: (v) => [`⚔️ +${(v*0.1).toFixed(1)}% dano`] },
+                { k:"def",  l:"Força de Defesa",   ic:"🛡️", color:"#534AB7", desc:"Reduz o dano recebido",
+                  effects: (v) => [`🛡️ -${(v*0.1).toFixed(1)}% dano recebido`] },
+                { k:"luck", l:"Sorte",              ic:"🍀", color:"#22c55e", desc:"Aumenta crítico e esquiva",
+                  effects: (v) => [`⚡ +${(v*0.05).toFixed(2)}% crítico`, `💨 +${(v*0.05).toFixed(2)}% esquiva`] },
+              ];
+
+              return (
+                <div style={{padding:"0 8px 12px"}}>
+                  {/* Header: pts disponíveis + salvar */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:8,color:"#444",fontWeight:700,letterSpacing:1,marginBottom:4}}>PONTOS DE SKILL DISPONÍVEIS</div>
+                      <div style={{background:"#ffd70011",border:"1px solid #ffd70033",borderRadius:8,padding:"5px 10px",display:"inline-flex",alignItems:"center",gap:6}}>
+                        <div style={{fontSize:8,color:"#ffd700",fontWeight:700,letterSpacing:0.5}}>SK</div>
+                        <div style={{fontSize:20,fontWeight:900,color:"#ffd700",lineHeight:1}}>{livresSkill}</div>
+                        <div style={{fontSize:8,color:"#ffd70055"}}>/ {activeChar.skill_points_livres||0}</div>
+                      </div>
+                    </div>
+                    <button onClick={saveSkills} disabled={savingSkills||totalDistSkill===0}
+                      style={{background:totalDistSkill>0?"#ffd70022":"#0d0d1f",
+                        border:`1px solid ${totalDistSkill>0?"#ffd70055":"#1e1e30"}`,
+                        borderRadius:8,padding:"8px 14px",fontSize:10,
+                        color:totalDistSkill>0?"#ffd700":"#333",fontWeight:700,
+                        cursor:totalDistSkill>0?"pointer":"default",letterSpacing:0.5}}>
+                      {savingSkills?"...":"✓ CONFIRMAR"}
+                    </button>
+                  </div>
+
+                  {SKILLS_DEF.map(sk => {
+                    const base = activeChar[`skill_${sk.k==="atk"?"atk":sk.k==="def"?"def":"luck"}`]||0;
+                    const pending = distribSkills[sk.k]||0;
+                    const total = base + pending;
+                    const pct = base;
+                    const pendPct = pending;
+
+                    return (
+                      <div key={sk.k} style={{background:"#0d0d1f",border:`1px solid ${sk.color}22`,borderRadius:10,padding:"10px 10px 8px",marginBottom:8}}>
+                        {/* Cabeçalho */}
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                          <span style={{fontSize:18,width:24,textAlign:"center",flexShrink:0}}>{sk.ic}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:11,fontWeight:700,color:"#dde"}}>{sk.l}</div>
+                            <div style={{fontSize:9,color:"#555",marginTop:1}}>{sk.desc}</div>
+                          </div>
+                          <div style={{fontSize:22,fontWeight:900,color:sk.color,lineHeight:1,flexShrink:0}}>{total}</div>
+                          <div style={{fontSize:10,color:`${sk.color}88`,fontWeight:700,flexShrink:0}}>%</div>
+                        </div>
+
+                        {/* Barra de progresso */}
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#333",marginBottom:2}}>
+                          <span>0</span><span style={{color:"#555"}}>{total} / 100</span><span>100</span>
+                        </div>
+                        <div style={{height:6,background:"#1a1a2e",borderRadius:10,overflow:"hidden",marginBottom:6,position:"relative"}}>
+                          <div style={{position:"absolute",height:"100%",borderRadius:10,background:sk.color,width:`${pct}%`}}/>
+                          {pendPct>0&&<div style={{position:"absolute",height:"100%",borderRadius:10,background:sk.color,opacity:0.4,left:`${pct}%`,width:`${pendPct}%`}}/>}
+                        </div>
+
+                        {/* Controles */}
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                          <span style={{fontSize:9,fontWeight:700,color:"#ffd700"}}>{pending>0?`+${pending} pendente`:""}</span>
+                          {hasSkPts && (
+                            <div style={{display:"flex",gap:4}}>
+                              <button onClick={()=>setDistribSkills(p=>{const c=p[sk.k]||0;if(c<=0)return p;return{...p,[sk.k]:c-1};})}
+                                disabled={pending<=0}
+                                style={{width:28,height:24,background:pending>0?"#ffffff0f":"#1a1a2e",border:`1px solid ${pending>0?"#ffffff20":"#1a1a2e"}`,borderRadius:6,color:pending>0?"#aaa":"#222",fontSize:10,fontWeight:900,cursor:pending>0?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                ▼
+                              </button>
+                              <button onClick={()=>setDistribSkills(p=>{const c=p[sk.k]||0;const livNow=(activeChar.skill_points_livres||0)-Object.values(p).reduce((a,b)=>a+b,0);if(livNow<=0||base+c>=100)return p;return{...p,[sk.k]:c+1};})}
+                                disabled={livresSkill<=0||total>=100}
+                                style={{width:28,height:24,background:livresSkill>0&&total<100?"#ffd70011":"#1a1a2e",border:`1px solid ${livresSkill>0&&total<100?"#ffd70044":"#1a1a2e"}`,borderRadius:6,color:livresSkill>0&&total<100?"#ffd700":"#222",fontSize:10,fontWeight:900,cursor:livresSkill>0&&total<100?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                ▲
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Efeitos */}
+                        <div style={{height:1,background:"#1e1e30",margin:"6px 0"}}/>
+                        <div style={{display:"flex",gap:8}}>
+                          {sk.effects(total).map((ef,i)=>(
+                            <div key={i} style={{flex:1,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                              <span style={{fontSize:9,color:"#555"}}>{ef.split(" ")[0]}</span>
+                              <span style={{fontSize:10,fontWeight:700,color:sk.color}}>{ef.split(" ").slice(1).join(" ")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {!hasSkPts && (
+                    <div style={{textAlign:"center",padding:"20px 0",color:"#333",fontSize:11}}>
+                      Suba de nível para ganhar pontos de skill
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+
+            {/* BAG */}
+            {warriorTab==="bag" && (()=>{
+              const armorItems = inventory.filter(i=>i.item_type==="armor"&&i.quantity>0);
+
+              // Filtra por aba
+              const filtered = bagTab==="all" ? armorItems : armorItems.filter(i=>i.item_key===bagTab);
+
+              // Ordena
+              const sorted = [...filtered].sort((a,b)=>{
+                if (bagSort==="lv_desc") return b.level - a.level;
+                if (bagSort==="lv_asc")  return a.level - b.level;
+                // name_asc: ordena por nome do slot
+                const na = ARMOR_SLOTS.find(s=>s.key===a.item_key)?.name||"";
+                const nb = ARMOR_SLOTS.find(s=>s.key===b.item_key)?.name||"";
+                return na.localeCompare(nb);
+              });
+
+              return (<>
+                 <div>
+                  {/* Abas de filtro por tipo */}
+                  <div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
+                    {[{k:"all",l:"Todas"}, ...ARMOR_SLOTS.map(s=>({k:s.key,l:s.name}))].map(t=>(
+                      <button key={t.k} onClick={()=>setBagTab(t.k)}
+                        style={{flexShrink:0,padding:"4px 10px",borderRadius:20,border:"none",cursor:"pointer",
+                          fontSize:10,fontWeight:700,
+                          background:bagTab===t.k?"#ffd700":"#ffffff10",
+                          color:bagTab===t.k?"#000":"#555"}}>
+                        {t.l}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Controles: ordenar + visualização */}
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10}}>
+                    <select value={bagSort} onChange={e=>setBagSort(e.target.value)}
+                      style={{flex:1,padding:"5px 8px",borderRadius:8,background:"#0d0d1e",border:"1px solid #ffffff15",color:"#aaa",fontSize:10,cursor:"pointer"}}>
+                      <option value="lv_desc">Nível: maior → menor</option>
+                      <option value="lv_asc">Nível: menor → maior</option>
+                      <option value="name_asc">Nome A→Z</option>
+                    </select>
+                    <button onClick={()=>setBagView("mosaic")}
+                      style={{padding:"5px 8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:11,
+                        background:bagView==="mosaic"?"#ffd70022":"#ffffff10",
+                        color:bagView==="mosaic"?"#ffd700":"#555",fontWeight:700}}>⊞</button>
+                    <button onClick={()=>setBagView("list")}
+                      style={{padding:"5px 8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:11,
+                        background:bagView==="list"?"#ffd70022":"#ffffff10",
+                        color:bagView==="list"?"#ffd700":"#555",fontWeight:700}}>☰</button>
+                  </div>
+
+                  {sorted.length===0 ? (
+                    <div style={{textAlign:"center",padding:"30px 0",color:"#444",fontSize:12}}>
+                      <div style={{fontSize:32,marginBottom:8}}>🎒</div>
+                      {bagTab==="all" ? "Nenhuma peça ainda." : `Sem peças de ${ARMOR_SLOTS.find(s=>s.key===bagTab)?.name}.`}
+                    </div>
+                  ) : bagView==="mosaic" ? (
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                      {sorted.map((i,idx)=>{
+                        const s=ARMOR_SLOTS.find(a=>a.key===i.item_key);
+                        const img=getArmorImg(activeChar.cavaleiro,i.item_key,i.level);
+                        const isEq=slots[i.item_key]?.level===i.level;
+                        return (
+                          <div key={idx} onClick={()=>setBagItemModal({item_key:i.item_key,level:i.level,quantity:i.quantity})}
+                            style={{background:"#0d0d1e",borderRadius:10,padding:10,
+                              border:`1px solid ${isEq?"#534AB7":LV_COLORS[i.level]+"44"}`,
+                              textAlign:"center",cursor:"pointer",position:"relative"}}>
+                            {isEq && <div style={{position:"absolute",top:4,right:4,fontSize:8,color:"#534AB7",fontWeight:700}}>✓</div>}
+                            {img ? (
+                              <img src={img} style={{width:48,height:48,objectFit:"contain"}} alt=""/>
+                            ) : (
+                              <div style={{fontSize:28}}>{s?.icon}</div>
+                            )}
+                            <div style={{fontSize:10,color:"#555",marginTop:2}}>{s?.name}</div>
+                            <div style={{fontSize:12,fontWeight:700,color:LV_COLORS[i.level]}}>Lv {i.level}</div>
+                            <div style={{fontSize:10,color:"#888"}}>x{i.quantity}</div>
+                            {i.quantity>=4&&i.level<7&&<div style={{fontSize:8,color:"#ffd700"}}>✓ Fundir</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {sorted.map((i,idx)=>{
+                        const s=ARMOR_SLOTS.find(a=>a.key===i.item_key);
+                        const img=getArmorImg(activeChar.cavaleiro,i.item_key,i.level);
+                        const isEq=slots[i.item_key]?.level===i.level;
+                        return (
+                          <div key={idx} onClick={()=>setBagItemModal({item_key:i.item_key,level:i.level,quantity:i.quantity})}
+                            style={{background:"#0d0d1e",borderRadius:10,padding:"8px 12px",
+                              border:`1px solid ${isEq?"#534AB7":LV_COLORS[i.level]+"33"}`,
+                              display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                            {img ? (
+                              <img src={img} style={{width:36,height:36,objectFit:"contain",flexShrink:0}} alt=""/>
+                            ) : (
+                              <div style={{fontSize:24,flexShrink:0}}>{s?.icon}</div>
+                            )}
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:12,fontWeight:700,color:"#dde"}}>{s?.name}</div>
+                              <div style={{fontSize:10,color:"#555"}}>Nível {i.level} · x{i.quantity}</div>
+                            </div>
+                            <div style={{fontSize:13,fontWeight:900,color:LV_COLORS[i.level]}}>Lv{i.level}</div>
+                            {isEq && <div style={{fontSize:9,color:"#534AB7",fontWeight:700}}>✓Eq</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal detalhe item da bag */}
+                {bagItemModal && (()=>{
+                  const {item_key, level, quantity} = bagItemModal;
+                  const s = ARMOR_SLOTS.find(a=>a.key===item_key);
+                  const img = getArmorImg(activeChar.cavaleiro, item_key, level);
+                  const isEq = slots[item_key]?.level===level;
+                  const bonuses = ARMOR_BONUS[item_key]||[];
+                  return (
+                    <div style={{position:"fixed",inset:0,zIndex:200,background:"#000000cc",display:"flex",alignItems:"flex-end"}}
+                      onClick={()=>setBagItemModal(null)}>
+                      <div onClick={e=>e.stopPropagation()}
+                        style={{background:"#0d0d1e",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:440,maxHeight:"70vh",overflowY:"auto",margin:"0 auto"}}>
+                        {/* Header */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                          <div style={{fontSize:15,fontWeight:800,color:LV_COLORS[level]}}>{s?.icon} {s?.name} — Lv {level}</div>
+                          <button onClick={()=>setBagItemModal(null)} style={{background:"#ffffff10",border:"none",borderRadius:8,padding:"3px 8px",color:"#aaa",cursor:"pointer",fontSize:11}}>✕</button>
+                        </div>
+                        {/* Imagem */}
+                        <div style={{textAlign:"center",marginBottom:14}}>
+                          {img ? (
+                            <img src={img} style={{width:80,height:80,objectFit:"contain"}} alt=""/>
+                          ) : (
+                            <div style={{fontSize:48}}>{s?.icon}</div>
+                          )}
+                          <div style={{fontSize:10,color:"#555",marginTop:4}}>x{quantity} na bag</div>
+                          {isEq && <div style={{fontSize:11,color:"#534AB7",fontWeight:700,marginTop:4}}>✓ Equipada atualmente</div>}
+                        </div>
+                        {/* Bônus */}
+                        <div style={{background:"#07070f",borderRadius:10,padding:12,marginBottom:14}}>
+                          <div style={{fontSize:11,color:"#888",fontWeight:700,marginBottom:8}}>Bônus de atributo</div>
+                          {bonuses.length===0 ? (
+                            <div style={{fontSize:11,color:"#444"}}>Sem bônus configurado</div>
+                          ) : bonuses.map((b,bi)=>{
+                            const pct=b.pct[level-1]||0;
+                            const base=armorStats.base[b.st]||0;
+                            const gain=Math.floor(base*(pct/100));
+                            const isNeg=pct<0;
+                            if(!pct) return null;
+                            return (
+                              <div key={bi} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                                <span style={{fontSize:12,color:"#888"}}>{b.st.toUpperCase()}</span>
+                                <span style={{fontSize:12,fontWeight:700,color:isNeg?"#ef4444":"#22c55e"}}>
+                                  {pct>0?"+":""}{pct.toFixed(1)}% ({isNeg?"":"+"}{ gain} pts)
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Botões */}
+                        {isEq ? (
+                          <button onClick={()=>{unequipSlot(item_key);setBagItemModal(null);}}
+                            style={{width:"100%",padding:12,borderRadius:10,border:"1px solid #f8717144",background:"#f8717111",color:"#f87171",fontSize:13,cursor:"pointer",fontWeight:700}}>
+                            🗑️ Remover armadura
+                          </button>
+                        ) : (
+                          <button onClick={()=>{equipSlot(item_key,level);setBagItemModal(null);}}
+                            style={{width:"100%",padding:12,borderRadius:10,border:"1px solid #534AB744",background:"#534AB711",color:"#a78bfa",fontSize:13,cursor:"pointer",fontWeight:700}}>
+                            ⚔️ Equipar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+              );
+            })()}
+
+            {/* GEMS */}
+            {warriorTab==="gems" && (
+              <div>
+                <div style={{fontSize:11,color:"#555",marginBottom:12}}>Recursos para forja</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+                  {[
+                    {key:"ki",         ic:"💫", name:"Ki/Cosmo"},
+                    {key:"frags",      ic:"🔷", name:"Fragmentos"},
+                    {key:"frag_a",     ic:"💎", name:"Frag Esp. A"},
+                    {key:"frag_b",     ic:"🌟", name:"Frag Esp. B"},
+                    {key:"frag_c",     ic:"🔮", name:"Frag Esp. C"},
+                    {key:"pedras",     ic:"🪨", name:"Pedras"},
+                  ].map(g=>{
+                    const item = inventory.find(i=>i.item_key===g.key && i.item_type==="gem");
+                    return (
+                      <div key={g.key} style={{background:"#0d0d1e",borderRadius:8,padding:"8px 6px",textAlign:"center",border:"1px solid #ffffff10"}}>
+                        <div style={{fontSize:20,marginBottom:4}}>{g.ic}</div>
+                        <div style={{fontSize:9,color:"#555",marginBottom:2}}>{g.name}</div>
+                        <div style={{fontSize:14,fontWeight:700,color:"#ffd700"}}>{item?.quantity||0}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{background:"#ffffff06",borderRadius:8,padding:10,fontSize:10,color:"#555",lineHeight:1.6}}>
+                  💡 Ganhe Ki em batalhas · Fragmentos dropam de inimigos · Frags Especiais em eventos
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ABA BATALHA */}
+        {gameTab==="battle" && (
+          <BattleScreen activeChar={activeChar} armorStats={armorStats}/>
+        )}
+
+        {/* ABA FORJA */}
+        {gameTab==="forge" && (
+          <div>
+            <div style={{fontSize:11,color:"#555",marginBottom:12}}>Funda 4 peças do mesmo nível para criar 1 do nível acima</div>
+
+            {/* Fusão em andamento */}
+            {fuseActive && Date.now() < fuseActive.endsAt && (
+              <div style={{background:"#0d1e0d",borderRadius:12,padding:12,marginBottom:12,border:"1px solid #22c55e44"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#22c55e",marginBottom:6}}>⚙️ Fusão em andamento...</div>
+                <div style={{fontSize:11,color:"#888",marginBottom:8}}>
+                  {ARMOR_SLOTS.find(s=>s.key===fuseActive.key)?.name} Nível {fuseActive.from} → {fuseActive.to}
+                </div>
+                <div style={{background:"#ffffff10",borderRadius:4,height:5,overflow:"hidden"}}>
+                  <div style={{width:`${Math.min(((Date.now()-(fuseActive.endsAt-fuseActive.total))/fuseActive.total)*100,100)}%`,height:"100%",background:"#22c55e",borderRadius:4,transition:"width 1s"}}/>
+                </div>
+              </div>
+            )}
+
+            {ARMOR_SLOTS.map(s=>{
+              const items = getInvItems(s.key);
+              const canFuse = items.filter(i=>i.quantity>=4 && i.level<7);
+              return (
+                <div key={s.key} style={{background:"#0d0d1e",borderRadius:10,padding:10,marginBottom:8,border:"1px solid #ffffff10"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:8}}>{s.icon} {s.name}</div>
+                  {canFuse.length===0 ? (
+                    <div style={{fontSize:10,color:"#444"}}>Sem peças suficientes para fundir (precisa de 4 iguais)</div>
+                  ) : canFuse.map(i=>{
+                    const cfg = FUSE_CFG[i.level-1] || FUSE_CFG[FUSE_CFG.length-1];
+                    if (!cfg) return null;
+                    const isFusing = fuseActive && fuseActive.key===s.key;
+                    return (
+                      <div key={i.level} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        <div style={{flex:1}}>
+                          <span style={{fontSize:11,color:LV_COLORS[i.level],fontWeight:700}}>Nv{i.level}</span>
+                          <span style={{fontSize:10,color:"#555",marginLeft:4}}>x{i.quantity} → </span>
+                          <span style={{fontSize:11,color:LV_COLORS[Math.min(i.level+1,7)],fontWeight:700}}>Nv{i.level+1}</span>
+                        </div>
+                        <div style={{fontSize:9,color:"#555"}}>Ki:{cfg.ki} Fr:{cfg.frags}</div>
+                        <button onClick={()=>!isFusing&&startFuse(s.key, i.level)}
+                          disabled={!!isFusing}
+                          style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:isFusing?"default":"pointer",background:isFusing?"#ffffff10":"#ffd70022",color:isFusing?"#444":"#ffd700",fontSize:10,fontWeight:700}}>
+                          {isFusing?"⏳":"🔨 Fundir"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ABA PREFERÊNCIAS */}
+        {gameTab==="gprefs" && (
+          <div style={{textAlign:"center",padding:"30px 0"}}>
+            <div style={{fontSize:32,marginBottom:12}}>⚙️</div>
+            <div style={{fontSize:14,fontWeight:800,color:"#dde",marginBottom:8}}>Preferências do Game</div>
+            <div style={{fontSize:11,color:"#555"}}>Em breve!</div>
+          </div>
+        )}
+        </div>{/* fim scroll */}
+
+        {/* Bottom nav FIXO */}
+        <div style={{flexShrink:0,display:"flex",background:"#06060fee",borderTop:"1px solid #ffffff18",paddingTop:6,paddingBottom:"env(safe-area-inset-bottom,6px)"}}>
+          {[
+            {k:"warrior", ic:"⚔️",  l:"Guerreiro"},
+            {k:"battle",  ic:"🗡️",  l:"Batalha"},
+            {k:"forge",   ic:"🔨",  l:"Forja"},
+            {k:"gprefs",  ic:"⚙️",  l:"Prefs"},
+          ].map(t=>(
+            <button key={t.k} onClick={()=>setGameTab(t.k)}
+              style={{flex:1,paddingTop:2,paddingBottom:4,border:"none",cursor:"pointer",
+                background:"transparent",
+                color:gameTab===t.k?"#ffd700":"#555",
+                display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+              <span style={{fontSize:22}}>{t.ic}</span>
+              <span style={{fontSize:8,fontWeight:700}}>{t.l}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 
 // ─── PREFS TAB ───────────────────────────────────────────────────────────────
 function PrefsTab({ user, onSave }) {
@@ -3421,7 +5229,7 @@ function EditProfileScreen({ user, onClose, onSave }) {
         <div style={{display:"flex",gap:0}}>
           {[
             {k:"profile",  l:"👤 Perfil"},
-            ...(user?.is_admin ? [{k:"warrior", l:"⚔️ Guerreiro"}] : []),
+            {k:"warrior",  l:"🎮 Game"},
             {k:"prefs",    l:"⚙️ Preferências"},
           ].map(t=>(
             <button key={t.k} onClick={()=>setActiveTab(t.k)}
@@ -3435,11 +5243,16 @@ function EditProfileScreen({ user, onClose, onSave }) {
         </div>
       </div>
 
-      <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
-        touchAction:"pan-y",padding:"20px 16px 40px"}}>
+      {/* ABA GUERREIRO — FORA do scroll para ter altura total e bottom nav fixo */}
+      {activeTab==="warrior" && (
+        <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
+          <WarriorTab user={user}/>
+        </div>
+      )}
 
-        {/* ABA GUERREIRO */}
-        {activeTab==="warrior" && <WarriorTab user={user}/>}
+      <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
+        touchAction:"pan-y",padding:"20px 16px 40px",
+        display:activeTab==="warrior"?"none":"block"}}>
 
         {/* ABA PREFERÊNCIAS */}
         {activeTab==="prefs" && <PrefsTab user={user} onSave={onSave}/>}
@@ -4490,11 +6303,11 @@ function UserDashboardModal({ user: u, reports, onClose, onAction }) {
 
 // ─── RANKING SCREEN ───────────────────────────────────────────────────────────
 // ─── MARKETPLACE SCREEN ──────────────────────────────────────────────────────
-function MarketplaceScreen({ user, onOpenFigure }) {
-  const isBasic = user?.plan === "basic" || user?.plan === "pro" || user?.is_admin;
+function MarketplaceScreen({ user, onOpenFigure, userMatches=[] }) {
+  const isBasic = user?.plan === "basic" || user?.plan === "plus" || user?.is_admin;
   const [listings, setListings] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [filter,   setFilter]   = useState("all"); // all | selling | wanted
+  const [filter,   setFilter]   = useState(userMatches.length>0?"matches":"all");
 
   useEffect(()=>{ load(); },[]);
 
@@ -4514,7 +6327,7 @@ function MarketplaceScreen({ user, onOpenFigure }) {
     setLoading(false);
   };
 
-  const filtered = filter==="all" ? listings
+  const filtered = filter==="matches" ? [] : filter==="all" ? listings
     : listings.filter(l=>l.kind===filter);
 
   return (
@@ -4531,11 +6344,12 @@ function MarketplaceScreen({ user, onOpenFigure }) {
             {k:"all",     l:"Todos"},
             {k:"selling", l:"🏷️ À Venda"},
             {k:"wanted",  l:"🔍 Procurando"},
+            {k:"matches", l:`🎯 Matches${userMatches.length>0?` (${userMatches.length})`:""}`},
           ].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)}
-              style={{padding:"5px 12px",borderRadius:20,border:"none",cursor:"pointer",
-                fontSize:10,fontWeight:700,
-                background:filter===f.k?"#ffd700":"#ffffff08",
+              style={{padding:"5px 10px",borderRadius:20,border:"none",cursor:"pointer",
+                fontSize:10,fontWeight:700,flexShrink:0,
+                background:filter===f.k?(f.k==="matches"?"#22c55e":"#ffd700"):"#ffffff08",
                 color:filter===f.k?"#000":"#555"}}>
               {f.l}
             </button>
@@ -4554,24 +6368,65 @@ function MarketplaceScreen({ user, onOpenFigure }) {
       <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
         touchAction:"pan-y",padding:16}}>
 
-        {loading && (
+        {/* ABA MATCHES */}
+        {filter==="matches" && (
+          userMatches.length===0
+            ? (
+              <div style={{textAlign:"center",padding:"40px 0"}}>
+                <div style={{fontSize:40,marginBottom:12}}>🎯</div>
+                <div style={{fontSize:14,color:"#555"}}>Nenhum match ainda</div>
+                <div style={{fontSize:11,color:"#444",marginTop:8}}>
+                  Quando alguém quiser uma figura que você vende (ou vice-versa), aparece aqui!
+                </div>
+              </div>
+            )
+            : userMatches.map((match,i)=>{
+              const fig = ALL_FIGURES.find(f=>f.id===match.figure_id);
+              const imgUrl = `https://res.cloudinary.com/dr3sxytes/image/upload/figures/${match.figure_id}/1.jpg`;
+              const isSeller = match.seller_id === user?.id;
+              return (
+                <div key={i} onClick={()=>fig&&onOpenFigure(fig)}
+                  style={{background:"#0d1e0d",borderRadius:12,padding:12,marginBottom:8,
+                    border:"1px solid #22c55e44",cursor:fig?"pointer":"default",
+                    display:"flex",gap:10,alignItems:"center"}}>
+                  <img src={imgUrl} alt=""
+                    style={{width:48,height:48,borderRadius:8,objectFit:"cover",
+                      background:"#ffffff08",flexShrink:0}}
+                    onError={e=>{e.target.style.display="none";}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"#22c55e",marginBottom:2}}>
+                      🎯 Match encontrado!
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#dde",
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {fig?.name || match.figure_id}
+                    </div>
+                    <div style={{fontSize:10,color:"#555",marginTop:2}}>
+                      {isSeller ? "Alguém quer comprar sua figura" : "Alguém está vendendo esta figura"}
+                    </div>
+                  </div>
+                  <span style={{fontSize:18,flexShrink:0}}>→</span>
+                </div>
+              );
+            })
+        )}
+
+        {/* LISTA DE ANÚNCIOS */}
+        {filter!=="matches" && loading && (
           <div style={{textAlign:"center",padding:"40px 0",color:"#555"}}>
             <div style={{fontSize:32,marginBottom:12}}>⏳</div>
             Carregando anúncios...
           </div>
         )}
 
-        {!loading && filtered.length===0 && (
+        {filter!=="matches" && !loading && filtered.length===0 && (
           <div style={{textAlign:"center",padding:"40px 0"}}>
             <div style={{fontSize:40,marginBottom:12}}>🛒</div>
             <div style={{fontSize:14,color:"#555"}}>Nenhum anúncio ainda</div>
-            {isBasic && <div style={{fontSize:11,color:"#444",marginTop:8}}>
-              Seja o primeiro a anunciar!
-            </div>}
           </div>
         )}
 
-        {!loading && filtered.map((item,i)=>{
+        {filter!=="matches" && !loading && filtered.map((item,i)=>{
           const fig = ALL_FIGURES.find(f=>f.id===item.figure_id);
           const imgUrl = `https://res.cloudinary.com/dr3sxytes/image/upload/figures/${item.figure_id}/1.jpg`;
           const isSelling = item.kind==="selling";
@@ -4581,14 +6436,10 @@ function MarketplaceScreen({ user, onOpenFigure }) {
               style={{background:"#0d0d1e",borderRadius:12,padding:12,marginBottom:8,
                 border:`1px solid ${isSelling?"#ffd70022":"#a855f722"}`,
                 cursor:fig?"pointer":"default",display:"flex",gap:10,alignItems:"center"}}>
-
-              {/* Imagem */}
               <img src={imgUrl} alt=""
                 style={{width:48,height:48,borderRadius:8,objectFit:"cover",
                   background:"#ffffff08",flexShrink:0}}
                 onError={e=>{e.target.style.display="none";}}/>
-
-              {/* Info */}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:11,fontWeight:800,color:"#dde",
                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
@@ -4604,8 +6455,6 @@ function MarketplaceScreen({ user, onOpenFigure }) {
                   </div>
                 )}
               </div>
-
-              {/* Preço / Badge */}
               <div style={{textAlign:"right",flexShrink:0}}>
                 {isSelling ? (
                   isBasic ? (
@@ -5143,6 +6992,117 @@ function FiguresAdminTab({ onSave, onDelete }) {
 }
 
 // ─── GAMIFICATION ADMIN TAB ──────────────────────────────────────────────────
+// ─── GAME ADMIN TAB ────────────────────────────────────────────────────────────
+function GameAdminTab() {
+  const [gameChars, setGameChars] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [msg,       setMsg]       = useState("");
+  const [xpAmount,  setXpAmount]  = useState(100);
+  const [lvAmount,  setLvAmount]  = useState(1);
+
+  useEffect(()=>{ loadAll(); },[]);
+
+  const loadAll = async () => {
+    setLoading(true);
+    // Busca todos os personagens de todos os usuários via admin endpoint
+    const d = await api.get("/game/characters/all").catch(()=>null);
+    setGameChars(Array.isArray(d) ? d : []);
+    setLoading(false);
+  };
+
+  const addTestInventory = async (charId) => {
+    // Adiciona 1 peça de cada armadura nível 1 para teste
+    const slots = ["helm","armor","belt","gauntlets","leggings","boots"];
+    for (const key of slots) {
+      await api.post(`/game/inventory/${charId}`, {
+        item_type:"armor", item_key:key, level:1, quantity:1
+      }).catch(()=>{});
+    }
+    // Adiciona recursos básicos
+    const gems = [{key:"ki",qty:9999},{key:"frags",qty:9999},{key:"frag_a",qty:5},{key:"frag_b",qty:3},{key:"frag_c",qty:2},{key:"pedras",qty:50}];
+    for (const g of gems) {
+      await api.post(`/game/inventory/${charId}`, {
+        item_type:"gem", item_key:g.key, level:1, quantity:g.qty
+      }).catch(()=>{});
+    }
+    setMsg("✅ Inventário de teste adicionado!");
+    setTimeout(()=>setMsg(""),3000);
+  };
+
+  const giveXP = async (charId, amount) => {
+    const r = await api.post(`/game/characters/${charId}/xp`, {xp:amount}).catch(()=>null);
+    if(r?.level) setMsg(`✅ +${amount} XP! Agora Lv${r.level}`);
+    else setMsg("✅ XP adicionado!");
+    setTimeout(()=>setMsg(""),3000);
+    loadAll();
+  };
+
+  const setLevel = async (charId, level) => {
+    const r = await api.put(`/game/characters/${charId}/level`, {level}).catch(()=>null);
+    if(r?.level) setMsg(`✅ Level atualizado para ${r.level}!`);
+    setTimeout(()=>setMsg(""),3000);
+    loadAll();
+  };
+
+  if (loading) return <div style={{padding:20,textAlign:"center",color:"#555"}}>⏳ Carregando...</div>;
+
+  return (
+    <div>
+      {msg && <div style={{background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:8,padding:"8px 12px",fontSize:11,color:"#22c55e",marginBottom:12}}>{msg}</div>}
+
+      <div style={{background:"#0d0d1e",borderRadius:10,padding:12,marginBottom:12,border:"1px solid #ffd70022"}}>
+        <div style={{fontSize:11,color:"#ffd700",fontWeight:700,marginBottom:8}}>⚙️ Configurações de Ganho</div>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:11,color:"#888",flex:1}}>XP a dar</span>
+          <input type="number" value={xpAmount} onChange={e=>setXpAmount(parseInt(e.target.value)||0)}
+            style={{width:80,padding:"4px 8px",borderRadius:6,background:"#ffffff08",border:"1px solid #ffffff15",color:"#dde",fontSize:12,textAlign:"right"}}/>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:11,color:"#888",flex:1}}>Nível alvo</span>
+          <input type="number" value={lvAmount} onChange={e=>setLvAmount(parseInt(e.target.value)||1)}
+            style={{width:80,padding:"4px 8px",borderRadius:6,background:"#ffffff08",border:"1px solid #ffffff15",color:"#dde",fontSize:12,textAlign:"right"}}/>
+        </div>
+      </div>
+
+      {gameChars.length===0 ? (
+        <div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>Nenhum personagem encontrado</div>
+      ) : gameChars.map(c=>{
+        const cav = CAVALEIROS[c.cavaleiro]||{};
+        return (
+          <div key={c.id} style={{background:"#0d0d1e",borderRadius:10,padding:12,marginBottom:8,border:"1px solid #ffffff10"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <span style={{fontSize:22}}>{cav.icon||"⚔️"}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#dde"}}>{c.name}</div>
+                <div style={{fontSize:10,color:"#555"}}>{c.user_name||c.user_id?.slice(0,8)} · {cav.nome||c.cavaleiro} · Lv{c.level}</div>
+                <div style={{fontSize:10,color:"#888"}}>XP: {c.xp_game||0}</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+              <button onClick={()=>giveXP(c.id, xpAmount)}
+                style={{padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",background:"#a855f722",color:"#a855f7",fontSize:10,fontWeight:700}}>
+                +{xpAmount} XP
+              </button>
+              <button onClick={()=>setLevel(c.id, lvAmount)}
+                style={{padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",background:"#ffd70022",color:"#ffd700",fontSize:10,fontWeight:700}}>
+                Setar Lv{lvAmount}
+              </button>
+              <button onClick={()=>addTestInventory(c.id)}
+                style={{padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",background:"#22c55e22",color:"#22c55e",fontSize:10,fontWeight:700}}>
+                🎒 Bag Teste
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      <button onClick={loadAll} style={{width:"100%",padding:10,borderRadius:8,border:"1px solid #ffffff15",background:"transparent",color:"#555",cursor:"pointer",fontSize:11,marginTop:4}}>
+        🔄 Atualizar
+      </button>
+    </div>
+  );
+}
+
 function GamificationAdminTab() {
   const [config,   setConfig]   = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -5340,6 +7300,7 @@ function AdminScreen({ user, onClose }) {
     {k:"figures",       l:"🎭 Figuras"},
     {k:"catalog",       l:"📂 Catálogo"},
     {k:"gamification",  l:"⚙️ Gamificação"},
+    {k:"game",          l:"🎮 Game"},
   ];
 
   // ── Estados do Catálogo ──
@@ -5738,6 +7699,9 @@ function AdminScreen({ user, onClose }) {
 
         {/* ABA GAMIFICAÇÃO */}
         {tab==="gamification" && <GamificationAdminTab/>}
+
+        {/* ABA GAME ADMIN */}
+        {tab==="game" && <GameAdminTab/>}
 
       {userDashboard && (
         <UserDashboardModal
@@ -6153,7 +8117,17 @@ export default function App() {
   const [settingsScreen, setSettingsScreen]=useState(false);
   const [profileScreen,  setProfileScreen] =useState(false);
   const [adminPending, setAdminPending]=useState({suggestions:0,reports:0,verifications:0});
+  const [userMatches,  setUserMatches]  =useState([]);
   const [filtersOpen,setFiltersOpen]=useState(false);
+
+  // Busca matches do usuário a cada 2 minutos
+  useEffect(()=>{
+    if (!user?.id) return;
+    const load = () => api.get("/marketplace/matches").then(d=>{ if(Array.isArray(d)) setUserMatches(d); }).catch(()=>{});
+    load();
+    const interval = setInterval(load, 2*60*1000);
+    return ()=>clearInterval(interval);
+  },[user?.id]);
 
   const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 
@@ -6541,6 +8515,17 @@ export default function App() {
               </span>
             </button>
           )}
+          {/* Ícone de match piscando */}
+          {userMatches.length > 0 && (
+            <button onClick={()=>setTab("market")}
+              style={{background:"#22c55e22",border:"1px solid #22c55e44",borderRadius:8,
+                padding:"4px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:4,
+                animation:"matchPulse 1.5s ease-in-out infinite"}}>
+              <style>{`@keyframes matchPulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+              <span style={{fontSize:12}}>🎯</span>
+              <span style={{fontSize:10,fontWeight:800,color:"#22c55e"}}>{userMatches.length}</span>
+            </button>
+          )}
           <OnlineCounter/>
         </div>
       </div>
@@ -6842,7 +8827,7 @@ export default function App() {
       {tab==="market" && (
         <div style={{flex:1,overflowY:"scroll",WebkitOverflowScrolling:"touch",
           touchAction:"pan-y",background:"#06060f",display:"flex",flexDirection:"column"}}>
-          <MarketplaceScreen user={user} onOpenFigure={f=>{setModal(f);}}/>
+          <MarketplaceScreen user={user} onOpenFigure={f=>{setModal(f);}} userMatches={userMatches}/>
         </div>
       )}
 
