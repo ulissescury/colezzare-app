@@ -6136,7 +6136,7 @@ function UserDashboardModal({ user: u, reports, onClose, onAction }) {
     const load = async () => {
       try {
         const [col, ver] = await Promise.all([
-          api.get(`/collection/${u.id}`).catch(()=>null),
+          api.get(`/collection/user/${u.id}`).catch(()=>null),
           api.get(`/verification/status`).catch(()=>null),
         ]);
         setData({ col, ver });
@@ -7961,10 +7961,23 @@ export default function App() {
           if (Object.keys(owned).length)  { setOwned(owned);  save(`ssv8_owned_${user?.id}`,  owned);  }
           if (Object.keys(wished).length) { setWished(wished); save(`ssv8_wished_${user?.id}`, wished); }
         }
-        const mkt = await api.get(`/marketplace/user/${user.id}`);
-        if (mkt && !mkt.error) {
-          if (mkt.listings) { setListings(mkt.listings); save(`ssv8_listings_${user?.id}`, mkt.listings); }
-          if (mkt.wanteds)  { setWanteds(mkt.wanteds);   save(`ssv8_wanteds_${user?.id}`,  mkt.wanteds);  }
+        // Meus anúncios de venda (usa rota existente + filtro no cliente)
+        const listingsAll = await api.get(`/marketplace/listings`);
+        if (Array.isArray(listingsAll)) {
+          const myL = {};
+          listingsAll.filter(l=>l.user_id===user.id).forEach(l=>{
+            myL[l.figure_id] = { vendendo:true, precoVenda:`${l.currency} ${l.price}`, estado:l.condition, desc:l.description, id:l.id };
+          });
+          setListings(myL); save(`ssv8_listings_${user?.id}`, myL);
+        }
+        // Meus "quero comprar" (wanteds)
+        const wantedAll = await api.get(`/marketplace/wanted`);
+        if (Array.isArray(wantedAll)) {
+          const myW = {};
+          wantedAll.filter(w=>w.user_id===user.id).forEach(w=>{
+            myW[w.figure_id] = { ativo:true, maxPreco:w.max_price, currency:w.currency };
+          });
+          setWanteds(myW); save(`ssv8_wanteds_${user?.id}`, myW);
         }
       } catch(e) { /* usa localStorage como fallback */ }
     };
@@ -8191,7 +8204,7 @@ export default function App() {
   const toggleWant=useCallback(id=>{
     setWanteds(p=>{
       const n={...p};delete n[id];save(`ssv8_wanteds_${user?.id}`,n);
-      api.delete(`/marketplace/wanted/${user?.id}/${id}`).catch(()=>{});
+      api.delete(`/marketplace/wanted/${id}`).catch(()=>{});
       return n;
     });
   },[user]);
