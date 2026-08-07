@@ -1500,7 +1500,7 @@ function Modal({ fig, owned, wished, myListing, myWanted, myCollection, onOwned,
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                       <div>
                         <div style={{fontSize:9,color:"#555",marginBottom:3}}>VALOR PAGO</div>
-                        <div style={{fontSize:13,color:"#ccc",fontWeight:600}}>{myCollection?.pago||"—"}</div>
+                        <div style={{fontSize:13,color:"#ccc",fontWeight:600}}>{myCollection?.pago ? `${myCollection.currency||"BRL"} ${myCollection.pago}` : "—"}</div>
                       </div>
                       <div>
                         <div style={{fontSize:9,color:"#555",marginBottom:3}}>DATA</div>
@@ -1657,11 +1657,15 @@ function Modal({ fig, owned, wished, myListing, myWanted, myCollection, onOwned,
 
 // ─── FORM EDITAR COLEÇÃO ─────────────────────────────────────────────────────
 function EditCollectionForm({ fig, current, onConfirm, onClose }) {
-  const [pago,    setPago]    = useState(current?.pago    || "");
+  const [pago,    setPago]    = useState(current?.pago    ?? "");
+  const [currency,setCurrency]= useState(current?.currency || "BRL");
   const [data,    setData]    = useState(current?.data    || "");
   const [bandai,    setBandai]    = useState(current?.bandai    || false);
   const [brand,     setBrand]     = useState(current?.brand     || (current?.bandai?"bandai":"nao_sei"));
   const [otherBrand,setOtherBrand]= useState(current?.otherBrand|| "");
+  const CURRENCIES = ["BRL","USD","EUR","JPY","ARS"];
+  const inputStyle = {width:"100%",padding:"10px 12px",borderRadius:8,background:"#ffffff0a",
+    border:"1px solid #22c55e22",color:"#dde",fontSize:13,outline:"none",fontFamily:"'Rajdhani',sans-serif"};
 
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:1100,background:"#000000cc",
@@ -1673,18 +1677,26 @@ function EditCollectionForm({ fig, current, onConfirm, onClose }) {
           marginBottom:4}}>📦 Minha Coleção</div>
         <div style={{fontSize:11,color:"#555",marginBottom:20}}>{fig.name}</div>
 
-        {[
-          {label:"Valor pago",val:pago,set:setPago,ph:"Ex: R$ 280"},
-          {label:"Data de compra",val:data,set:setData,ph:"Ex: Jan 2023"},
-        ].map(f=>(
-          <div key={f.label} style={{marginBottom:14}}>
-            <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:6}}>{f.label.toUpperCase()}</div>
-            <input value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
-              style={{width:"100%",padding:"10px 12px",borderRadius:8,background:"#ffffff0a",
-                border:"1px solid #22c55e22",color:"#dde",fontSize:13,outline:"none",
-                fontFamily:"'Rajdhani',sans-serif"}}/>
+        {/* VALOR PAGO — número + moeda */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:6}}>VALOR PAGO</div>
+          <div style={{display:"flex",gap:8}}>
+            <select value={currency} onChange={e=>setCurrency(e.target.value)}
+              style={{...inputStyle,width:90,flexShrink:0}}>
+              {CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            <input type="number" inputMode="decimal" min="0" step="0.01" value={pago}
+              onChange={e=>setPago(e.target.value)} placeholder="Ex: 280"
+              style={inputStyle}/>
           </div>
-        ))}
+        </div>
+
+        {/* DATA DE COMPRA — calendário */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:9,color:"#555",fontWeight:700,letterSpacing:1,marginBottom:6}}>DATA DE COMPRA</div>
+          <input type="date" value={data} onChange={e=>setData(e.target.value)}
+            style={{...inputStyle,colorScheme:"dark"}}/>
+        </div>
 
         {/* MARCA */}
         <div style={{marginBottom:18}}>
@@ -1699,7 +1711,7 @@ function EditCollectionForm({ fig, current, onConfirm, onClose }) {
             color:"#666",fontSize:12,fontWeight:700,cursor:"pointer"}}>
             Cancelar
           </button>
-          <button onClick={()=>onConfirm({pago,data,bandai:brand==="bandai",brand,otherBrand})}
+          <button onClick={()=>onConfirm({pago,currency,data,bandai:brand==="bandai",brand,otherBrand})}
             style={{flex:2,padding:"12px",borderRadius:10,border:"none",
               background:"linear-gradient(90deg,#22c55e,#16a34a)",
               color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer"}}>
@@ -2262,7 +2274,7 @@ body{background:#06060f;color:#dde;font-family:'Rajdhani',Arial,sans-serif;paddi
       if (cols.lancamento) row.push(`"${f.lancamento||"—"}"`);
       if (cols.status)     row.push(`"${isOwned?"Tenho":"Quero"}"`);
       if (cols.marca)      row.push(`"${brand?.label||"—"}"`);
-      if (cols.pago)       row.push(`"${c.pago||"—"}"`);
+      if (cols.pago)       row.push(`"${c.pago?`${c.currency||"BRL"} ${c.pago}`:"—"}"`);
       if (cols.data)       row.push(`"${c.data||"—"}"`);
       if (cols.condicao)   row.push(`"${c.condition||"—"}"`);
       if (cols.venda)      row.push(`"${l.vendendo?(l.precoVenda||"—"):"—"}"`);
@@ -2342,7 +2354,7 @@ body{background:#06060f;color:#dde;font-family:'Rajdhani',Arial,sans-serif;paddi
                       {cols.lancamento && <td style={{padding:"5px 8px",color:"#888"}}>{f.lancamento||"—"}</td>}
                       {cols.status     && <td style={{padding:"5px 8px",color:isOwned?"#22c55e":"#a855f7",fontWeight:700}}>{isOwned?"✓ Tenho":"♡ Quero"}</td>}
                       {cols.marca      && <td style={{padding:"5px 8px",color:"#888"}}>{brand?.label||"—"}</td>}
-                      {cols.pago       && <td style={{padding:"5px 8px",color:"#22c55e"}}>{c.pago||"—"}</td>}
+                      {cols.pago       && <td style={{padding:"5px 8px",color:"#22c55e"}}>{c.pago?`${c.currency||"BRL"} ${c.pago}`:"—"}</td>}
                       {cols.data       && <td style={{padding:"5px 8px",color:"#888"}}>{c.data||"—"}</td>}
                       {cols.condicao   && <td style={{padding:"5px 8px",color:"#888"}}>{c.condition||"—"}</td>}
                       {cols.venda      && <td style={{padding:"5px 8px",color:"#ffd700"}}>{l.vendendo?(l.precoVenda||"—"):"—"}</td>}
@@ -7836,12 +7848,13 @@ export default function App() {
           data.forEach(item => {
             if (item.status==='owned')  owned[item.figure_id]  = true;
             if (item.status==='wished') wished[item.figure_id] = true;
-            if (item.brand || item.price_paid || item.bought_at) {
+            if (item.brand || item.price_paid != null || item.bought_at) {
               colls[item.figure_id] = {
                 brand:      item.brand || (item.is_bandai ? 'bandai' : undefined),
                 otherBrand: item.brand_name || '',
                 bandai:     !!item.is_bandai,
-                pago:       item.price_paid || '',
+                pago:       item.price_paid != null ? String(item.price_paid) : '',
+                currency:   item.currency_paid || 'BRL',
                 data:       item.bought_at || '',
               };
             }
@@ -8187,12 +8200,15 @@ export default function App() {
     const n={...collections,[fig.id]:data};
     setCollections(n);save(`ssv8_collections_${user?.id}`,n);
     // Mapeia o shape local -> colunas reais do backend (PATCH /collection/:figure_id)
+    const valorNum = data.pago !== "" && data.pago != null ? Number(data.pago) : null;
     api.patch(`/collection/${fig.id}`, {
-      price_paid: data.pago || null,
-      bought_at:  data.data || null,
-      is_bandai:  data.brand === 'bandai',
-      brand:      data.brand || null,
-      brand_name: data.brand === 'generico' ? (data.otherBrand || null) : null,
+      price_paid:     Number.isFinite(valorNum) ? valorNum : null,
+      paid_price_num: Number.isFinite(valorNum) ? valorNum : null,
+      currency_paid:  data.currency || "BRL",
+      bought_at:      data.data || null,               // input type=date => ISO yyyy-mm-dd
+      is_bandai:      data.brand === 'bandai',
+      brand:          data.brand || null,
+      brand_name:     data.brand === 'generico' ? (data.otherBrand || null) : null,
     }).catch(()=>{});
     setEditForm(null);
   };
