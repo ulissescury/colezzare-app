@@ -18,6 +18,10 @@ const api = {
     const r = await fetch(`${API_URL}${path}`, { method: "PUT", headers: api._headers(), body: JSON.stringify(body) });
     return r.json();
   },
+  patch: async (path, body) => {
+    const r = await fetch(`${API_URL}${path}`, { method: "PATCH", headers: api._headers(), body: JSON.stringify(body) });
+    return r.json();
+  },
   get: async (path) => {
     const r = await fetch(`${API_URL}${path}`, { headers: api._headers() });
     return r.json();
@@ -2509,10 +2513,9 @@ body{background:#06060f;color:#dde;font-family:'Rajdhani',Arial,sans-serif;paddi
 
 // ─── MARCAS ───────────────────────────────────────────────────────────────────
 const LICENSED_BRANDS = [
-  { id:"bandai",  label:"Bandai Original",    short:"BANDAI", color:"#cc0000", bg:"#cc0000", textColor:"#fff",    oficial:true,  logo:"https://res.cloudinary.com/dr3sxytes/image/upload/brands/bandai-logo.png", desc:"Figura oficial Bandai / Tamashii Nations" },
-  { id:"custom",  label:"Fabricação Própria", short:"FAB",    color:"#6366f1", bg:"#312e81", textColor:"#a5b4fc", oficial:null,  desc:"Peça artesanal ou produção independente" },
-  { id:"replica", label:"Réplica / Bootleg",  short:"REP",    color:"#f59e0b", bg:"#451a03", textColor:"#fcd34d", oficial:false, desc:"Cópia não oficial sem licença" },
-  { id:"nao_sei", label:"Não identificada",   short:"?",      color:"#444",    bg:"#222",    textColor:"#666",    oficial:null,  desc:"" },
+  { id:"bandai",   label:"Bandai Original", short:"BANDAI", color:"#cc0000", bg:"#cc0000", textColor:"#fff",    oficial:true,  logo:"https://res.cloudinary.com/dr3sxytes/image/upload/brands/bandai-logo.png", desc:"Figura oficial Bandai / Tamashii Nations" },
+  { id:"generico", label:"Genérico",        short:"GEN",    color:"#f59e0b", bg:"#451a03", textColor:"#fcd34d", oficial:false, desc:"Marca genérica — informe o nome abaixo" },
+  { id:"nao_sei",  label:"Não informar",    short:"?",      color:"#444",    bg:"#222",    textColor:"#666",    oficial:null,  desc:"" },
 ];
 
 function BrandBadge({ brandId, short, size="sm" }) {
@@ -2538,10 +2541,6 @@ function BrandBadge({ brandId, short, size="sm" }) {
 function BrandSelector({ value, onChange, otherBrand, onOtherChange }) {
   const [open, setOpen] = useState(false);
   const sel = LICENSED_BRANDS.find(b=>b.id===value) || LICENSED_BRANDS[LICENSED_BRANDS.length-1];
-
-  const oficiais    = LICENSED_BRANDS.filter(b=>b.oficial===true);
-  const naoOficiais = LICENSED_BRANDS.filter(b=>b.oficial===false);
-  const outros      = LICENSED_BRANDS.filter(b=>b.oficial===null);
 
   return (
     <div>
@@ -2571,32 +2570,16 @@ function BrandSelector({ value, onChange, otherBrand, onOtherChange }) {
 
       {open && (
         <div style={{background:"#0d0d1e",border:"1px solid #ffffff10",borderRadius:10,
-          marginTop:6,overflow:"hidden",maxHeight:300,overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
-
-          {/* Oficiais */}
-          <div style={{padding:"6px 12px 3px",fontSize:8,color:"#22c55e",
-            fontWeight:700,letterSpacing:1,background:"#22c55e08"}}>
-            ✓ MARCAS OFICIAIS / LICENCIADAS
-          </div>
-          {oficiais.map(b=><BrandOption key={b.id} b={b} value={value} onChange={v=>{onChange(v);setOpen(false);}}/>)}
-
-          {/* Não oficiais */}
-          <div style={{padding:"6px 12px 3px",fontSize:8,color:"#f87171",
-            fontWeight:700,letterSpacing:1,background:"#f8717108",borderTop:"1px solid #ffffff08"}}>
-            ⚠️ NÃO OFICIAIS (clones chineses)
-          </div>
-          {naoOficiais.map(b=><BrandOption key={b.id} b={b} value={value} onChange={v=>{onChange(v);setOpen(false);}}/>)}
-
-          {/* Outros */}
-          <div style={{borderTop:"1px solid #ffffff08"}}>
-            {outros.map(b=><BrandOption key={b.id} b={b} value={value} onChange={v=>{onChange(v);setOpen(false);}}/>)}
-          </div>
+          marginTop:6,overflow:"hidden"}}>
+          {LICENSED_BRANDS.map(b=>(
+            <BrandOption key={b.id} b={b} value={value} onChange={v=>{onChange(v);setOpen(false);}}/>
+          ))}
         </div>
       )}
 
-      {value==="outro" && (
+      {value==="generico" && (
         <input value={otherBrand||""} onChange={e=>onOtherChange(e.target.value)}
-          placeholder="Digite o nome da marca..."
+          placeholder="Digite o nome da marca genérica..."
           style={{width:"100%",marginTop:6,padding:"8px 12px",borderRadius:8,
             background:"#ffffff0a",border:"1px solid #ffffff15",
             color:"#dde",fontSize:12,outline:"none",fontFamily:"'Rajdhani',sans-serif"}}/>
@@ -4530,7 +4513,7 @@ function WarriorTab({ user }) {
                   }}/>
                 )}
                 {/* 3 colunas: boneco | stats | pontos */}
-                <div style={{display:"flex",gap:8,marginBottom:10}}>
+                <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"flex-start"}}>
                   {/* Boneco SVG */}
                   <div style={{flexShrink:0,width:80,background:"rgba(83,74,183,.08)",border:"1px solid rgba(83,74,183,.2)",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:6}}>
                     <svg viewBox="0 0 80 130" fill="none" style={{width:70,height:108,opacity:.9}}>
@@ -7853,10 +7836,13 @@ export default function App() {
           data.forEach(item => {
             if (item.status==='owned')  owned[item.figure_id]  = true;
             if (item.status==='wished') wished[item.figure_id] = true;
-            if (item.brand || item.paid_price || item.purchase_date) {
+            if (item.brand || item.price_paid || item.bought_at) {
               colls[item.figure_id] = {
-                brand: item.brand, pago: item.paid_price,
-                data: item.purchase_date, condition: item.condition
+                brand:      item.brand || (item.is_bandai ? 'bandai' : undefined),
+                otherBrand: item.brand_name || '',
+                bandai:     !!item.is_bandai,
+                pago:       item.price_paid || '',
+                data:       item.bought_at || '',
               };
             }
           });
@@ -8200,7 +8186,14 @@ export default function App() {
   const confirmEditCollection=(fig,data)=>{
     const n={...collections,[fig.id]:data};
     setCollections(n);save(`ssv8_collections_${user?.id}`,n);
-    api.put(`/collection/${fig.id}`, data).catch(()=>{});
+    // Mapeia o shape local -> colunas reais do backend (PATCH /collection/:figure_id)
+    api.patch(`/collection/${fig.id}`, {
+      price_paid: data.pago || null,
+      bought_at:  data.data || null,
+      is_bandai:  data.brand === 'bandai',
+      brand:      data.brand || null,
+      brand_name: data.brand === 'generico' ? (data.otherBrand || null) : null,
+    }).catch(()=>{});
     setEditForm(null);
   };
 
